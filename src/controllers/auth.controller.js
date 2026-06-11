@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
 const User = require('../models/User');
 const Relationship = require('../models/Relationship');
 const LoveTree = require('../models/LoveTree');

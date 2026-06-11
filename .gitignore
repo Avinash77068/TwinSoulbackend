@@ -46,4 +46,4 @@ temp/
 pids
 *.pid
 *.seed
-*.pid.lock
+*.pid.lockauth.controller.js
