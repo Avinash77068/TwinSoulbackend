@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: `${__dirname}/.env` });
 
 // Global crash guards — keep server alive on unhandled errors
 process.on('uncaughtException', (err) => {
