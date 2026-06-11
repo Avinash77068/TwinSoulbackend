@@ -5,6 +5,7 @@ const RelationshipLevel = require('../models/RelationshipLevel');
 const TimelineEvent = require('../models/TimelineEvent');
 const Message = require('../models/Message');
 const Photo = require('../models/Photo');
+const Notification = require('../models/Notification');
 
 exports.connectWithCode = async (req, res) => {
   const { coupleCode, connectionPassword } = req.body;
@@ -35,10 +36,46 @@ exports.connectWithCode = async (req, res) => {
     user2Approved: false,
   });
 
+  // Notify the partner so they see the connection request
+  await Notification.create({
+    userId: partner._id,
+    relationshipId: relationship._id,
+    type: 'connection',
+    title: 'Connection Request 💕',
+    body: `${req.user.name || 'Someone'} wants to connect with you!`,
+    data: { relationshipId: relationship._id, requesterName: req.user.name },
+  });
+
   res.json({
     success: true,
     message: 'Connection request sent. Waiting for both partners to approve.',
     data: { relationshipId: relationship._id, partnerId: partner._id, partnerName: partner.name },
+  });
+};
+
+exports.getPendingRequest = async (req, res) => {
+  const pending = await Relationship.findOne({
+    $or: [{ user1: req.user._id }, { user2: req.user._id }],
+    status: 'pending',
+  }).populate('user1', 'name nickname').populate('user2', 'name nickname');
+
+  if (!pending) return res.json({ success: true, data: { pending: null } });
+
+  // user2 initiated the connect; user1 is the partner whose code was used
+  const isUser1 = pending.user1._id.toString() === req.user._id.toString();
+  const otherUser = isUser1 ? pending.user2 : pending.user1;
+  const myApproved = isUser1 ? pending.user1Approved : pending.user2Approved;
+
+  res.json({
+    success: true,
+    data: {
+      pending: {
+        relationshipId: pending._id,
+        requesterName: otherUser.nickname || otherUser.name,
+        myApproved,
+        needsMyApproval: !myApproved,
+      },
+    },
   });
 };
 

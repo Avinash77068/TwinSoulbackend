@@ -1,6 +1,7 @@
 const Message = require('../models/Message');
 const LoveTree = require('../models/LoveTree');
 const TimelineEvent = require('../models/TimelineEvent');
+const { getIo } = require('../config/socketInstance');
 
 const requireRelationship = (req, res) => {
   if (!req.user.relationshipId) {
@@ -73,6 +74,11 @@ exports.sendMessage = async (req, res) => {
 
   await addLoveTreePoints(req.user.relationshipId, 1, 'chatPoints');
   await message.populate('senderId', 'name nickname profilePhoto');
+
+  const io = getIo();
+  if (io) {
+    io.to(`relationship:${req.user.relationshipId}`).emit('message:new', message);
+  }
 
   res.status(201).json({ success: true, message: 'Message sent', data: { messageId: message._id, message } });
 };
