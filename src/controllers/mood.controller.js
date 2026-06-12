@@ -1,5 +1,6 @@
 const MoodEntry = require('../models/MoodEntry');
 const LoveTree = require('../models/LoveTree');
+const { getIo } = require('../config/socketInstance');
 
 const requireRelationship = (req, res) => {
   if (!req.user.relationshipId) {
@@ -15,7 +16,7 @@ exports.checkin = async (req, res) => {
   if (!requireRelationship(req, res)) return;
   const { mood, note } = req.body;
   if (!mood) return res.status(400).json({ success: false, message: 'Mood required' });
-  const valid = ['happy', 'loved', 'missing', 'sad', 'relaxed'];
+  const valid = ['loved', 'happy', 'neutral', 'sad', 'anxious', 'angry'];
   if (!valid.includes(mood)) {
     return res.status(400).json({ success: false, message: `Mood must be one of: ${valid.join(', ')}` });
   }
@@ -30,7 +31,19 @@ exports.checkin = async (req, res) => {
   const tree = await LoveTree.findOne({ relationshipId: req.user.relationshipId });
   if (tree) { tree.checkinPoints += 2; tree.points += 2; tree.lastWatered = new Date(); await tree.save(); }
 
-  res.json({ success: true, message: 'Mood checked in ❤️', data: { entry } });
+  // Notify partner in real-time
+  if (req.user.partnerId) {
+    const io = getIo();
+    if (io) {
+      io.to(`user:${req.user.partnerId.toString()}`).emit('partner:mood', {
+        mood: entry.mood,
+        note: entry.note,
+        updaterName: req.user.nickname || req.user.name || 'Your partner',
+      });
+    }
+  }
+
+  res.json({ success: true, message: 'Mood checked in ❤️', data: { mood: entry } });
 };
 
 exports.getTodayMood = async (req, res) => {
