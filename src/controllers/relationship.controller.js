@@ -29,12 +29,24 @@ exports.connectWithCode = async (req, res) => {
     return res.status(409).json({ success: false, message: 'You are already in a relationship' });
   }
 
+  // Prevent duplicate pending requests between the same two users
+  const existing = await Relationship.findOne({
+    $or: [
+      { user1: partner._id, user2: req.user._id },
+      { user1: req.user._id, user2: partner._id },
+    ],
+    status: 'pending',
+  });
+  if (existing) {
+    return res.status(409).json({ success: false, message: 'A connection request already exists between you two' });
+  }
+
   const relationship = await Relationship.create({
     user1: partner._id,
     user2: req.user._id,
     status: 'pending',
     user1Approved: false,
-    user2Approved: false,
+    user2Approved: true, // requester auto-approves by initiating
   });
 
   await Notification.create({
@@ -126,6 +138,10 @@ exports.approveConnection = async (req, res) => {
 
     const io = getIo();
     if (io) {
+      const room = `relationship:${relationship._id}`;
+      // Add both users' live sockets into the relationship room so future events reach them
+      io.in(`user:${relationship.user1}`).socketsJoin(room);
+      io.in(`user:${relationship.user2}`).socketsJoin(room);
       io.to(`user:${relationship.user1}`).emit('connection:approved', {});
       io.to(`user:${relationship.user2}`).emit('connection:approved', {});
     }

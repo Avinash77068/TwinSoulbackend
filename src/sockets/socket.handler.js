@@ -19,15 +19,20 @@ module.exports = (io) => {
     const userId = socket.userId;
     console.log(`Socket connected: ${userId}`);
 
-    await Presence.findOneAndUpdate(
-      { userId },
-      { isOnline: true, lastHeartbeat: new Date(), socketId: socket.id },
-      { upsert: true }
-    );
+    await Promise.all([
+      Presence.findOneAndUpdate(
+        { userId },
+        { isOnline: true, lastHeartbeat: new Date(), socketId: socket.id },
+        { upsert: true }
+      ),
+      User.findByIdAndUpdate(userId, { isOnline: true, lastSeen: new Date() }),
+    ]);
 
     const user = await User.findById(userId);
     if (user?.relationshipId) {
       socket.join(`relationship:${user.relationshipId}`);
+      // notify partner that this user came online
+      socket.to(`relationship:${user.relationshipId}`).emit('partner:online', { userId });
     }
     socket.join(`user:${userId}`);
 
@@ -61,10 +66,14 @@ module.exports = (io) => {
 
     socket.on('disconnect', async () => {
       console.log(`Socket disconnected: ${userId}`);
-      await Presence.findOneAndUpdate(
-        { userId },
-        { isOnline: false, lastSeen: new Date(), socketId: '' }
-      );
+      const now = new Date();
+      await Promise.all([
+        Presence.findOneAndUpdate(
+          { userId },
+          { isOnline: false, lastSeen: now, socketId: '' }
+        ),
+        User.findByIdAndUpdate(userId, { isOnline: false, lastSeen: now }),
+      ]);
       if (user?.relationshipId) {
         socket.to(`relationship:${user.relationshipId}`).emit('partner:offline', { userId });
       }
