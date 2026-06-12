@@ -8,6 +8,43 @@ const Message = require('../models/Message');
 const Photo = require('../models/Photo');
 const Notification = require('../models/Notification');
 
+exports.declineConnection = async (req, res) => {
+  const { relationshipId } = req.body;
+  if (!relationshipId) {
+    return res.status(400).json({ success: false, message: 'relationshipId required' });
+  }
+
+  const relationship = await Relationship.findById(relationshipId);
+  if (!relationship) {
+    return res.status(404).json({ success: false, message: 'Request not found' });
+  }
+  if (relationship.status !== 'pending') {
+    return res.status(400).json({ success: false, message: 'Request already processed' });
+  }
+
+  const uid = req.user._id.toString();
+  const isUser1 = relationship.user1.toString() === uid;
+  const isUser2 = relationship.user2.toString() === uid;
+  if (!isUser1 && !isUser2) {
+    return res.status(403).json({ success: false, message: 'Not part of this request' });
+  }
+
+  // The requester is the one who auto-approved (user2Approved: true at creation)
+  const requesterId = relationship.user2Approved && !relationship.user1Approved
+    ? relationship.user2
+    : relationship.user1;
+
+  await Relationship.deleteOne({ _id: relationshipId });
+  await Notification.deleteMany({ relationshipId });
+
+  const io = getIo();
+  if (io) {
+    io.to(`user:${requesterId.toString()}`).emit('connection:declined');
+  }
+
+  res.json({ success: true, message: 'Connection request declined.' });
+};
+
 exports.connectWithCode = async (req, res) => {
   const { coupleCode, connectionPassword } = req.body;
   if (!coupleCode || !connectionPassword) {
@@ -29,7 +66,7 @@ exports.connectWithCode = async (req, res) => {
     return res.status(409).json({ success: false, message: 'You are already in a relationship' });
   }
 
-  // Prevent duplicate pending requests between the same two users
+  // If requester already has a pending request to this partner, delete it and allow re-send
   const existing = await Relationship.findOne({
     $or: [
       { user1: partner._id, user2: req.user._id },
@@ -38,7 +75,20 @@ exports.connectWithCode = async (req, res) => {
     status: 'pending',
   });
   if (existing) {
-    return res.status(409).json({ success: false, message: 'A connection request already exists between you two' });
+    const iAmRequester =
+      (existing.user2.toString() === req.user._id.toString() && existing.user2Approved) ||
+      (existing.user1.toString() === req.user._id.toString() && existing.user1Approved);
+    if (iAmRequester) {
+      // Stale pending from a previous attempt — clean up and allow re-send
+      await Relationship.deleteOne({ _id: existing._id });
+      await Notification.deleteMany({ relationshipId: existing._id });
+    } else {
+      // Partner already sent us a request — tell user to approve instead
+      return res.status(409).json({
+        success: false,
+        message: 'This user already sent you a connection request. Please check your pending requests.',
+      });
+    }
   }
 
   const relationship = await Relationship.create({

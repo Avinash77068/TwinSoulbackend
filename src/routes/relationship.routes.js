@@ -4,6 +4,7 @@ const c = require('../controllers/relationship.controller');
 
 router.post('/connect', protect, c.connectWithCode);
 router.post('/approve', protect, c.approveConnection);
+router.post('/decline', protect, c.declineConnection);
 router.get('/pending', protect, c.getPendingRequest);
 router.get('/dashboard', protect, c.getDashboard);
 router.get('/info', protect, c.getRelationshipInfo);
