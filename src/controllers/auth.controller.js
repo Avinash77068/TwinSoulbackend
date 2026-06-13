@@ -141,6 +141,13 @@ exports.regenerateCodes = async (req, res) => {
   });
 };
 
+exports.saveFcmToken = async (req, res) => {
+  const { fcmToken } = req.body;
+  if (!fcmToken) return res.status(400).json({ success: false, message: 'FCM token required' });
+  await User.findByIdAndUpdate(req.user._id, { fcmToken });
+  res.json({ success: true, message: 'FCM token saved' });
+};
+
 exports.logout = async (req, res) => {
   await Presence.findOneAndUpdate(
     { userId: req.user._id },

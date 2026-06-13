@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Presence = require('../models/Presence');
+const sendPushNotification = require('../utils/sendPushNotification');
 
 module.exports = (io) => {
   io.use(async (socket, next) => {
@@ -36,8 +37,42 @@ module.exports = (io) => {
     }
     socket.join(`user:${userId}`);
 
-    socket.on('message:send', (data) => {
+    socket.on('message:send', async (data) => {
       socket.to(`relationship:${data.relationshipId}`).emit('message:new', data);
+
+      // FCM: notify partner if they are offline
+      try {
+        if (user?.partnerId) {
+          const partnerPresence = await Presence.findOne({ userId: user.partnerId });
+          if (!partnerPresence?.isOnline) {
+            const partner = await User.findById(user.partnerId).select('fcmToken');
+            if (partner?.fcmToken) {
+              const senderName = user.nickname || user.name || 'Partner';
+              const messagePreview =
+                data.type === 'text'
+                  ? data.content?.slice(0, 100)
+                  : data.type === 'image'
+                  ? '📷 Photo'
+                  : data.type === 'voice'
+                  ? '🎤 Voice message'
+                  : '💬 New message';
+
+              await sendPushNotification({
+                fcmToken: partner.fcmToken,
+                title: senderName,
+                body: messagePreview,
+                data: {
+                  type: 'message',
+                  relationshipId: String(data.relationshipId),
+                  senderId: String(userId),
+                },
+              });
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[Socket FCM Error]', err.message);
+      }
     });
 
     socket.on('message:typing', (data) => {
