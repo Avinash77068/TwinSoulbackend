@@ -43,7 +43,6 @@ module.exports = (io) => {
       const room = `relationship:${data.relationshipId}`;
       console.log(`[Socket] Emitting message:new to room: ${room}`);
       socket.to(room).emit('message:new', data);
-
       // FCM: notify partner if they are offline
       try {
         if (user?.partnerId) {
