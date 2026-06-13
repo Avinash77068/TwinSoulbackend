@@ -43,8 +43,9 @@ temp/
 .pnp.js
 
 # Firebase service account (sensitive — never commit)
-src/config/firebase-service-account.json
 
+src/config/firebase-service-account.json
+*.json
 # Runtime data
 pids
 *.pid
