@@ -83,8 +83,28 @@ module.exports = (io) => {
       socket.to(`relationship:${data.relationshipId}`).emit('partner:mood', data);
     });
 
-    socket.on('music:update', (data) => {
+    socket.on('music:update', async (data) => {
       socket.to(`relationship:${data.relationshipId}`).emit('music:sync', data);
+
+      // FCM: notify partner if offline and a new song started
+      if ((data.action === 'play' || data.action === 'set_track') && user?.partnerId) {
+        try {
+          const partnerPresence = await Presence.findOne({ userId: user.partnerId });
+          if (!partnerPresence?.isOnline) {
+            const partner = await User.findById(user.partnerId).select('fcmToken');
+            if (partner?.fcmToken) {
+              const senderName = user.nickname || user.name || 'Partner';
+              const trackName = data.track?.title || data.currentTrack?.title || 'a song';
+              await sendPushNotification({
+                fcmToken: partner.fcmToken,
+                title: `🎵 ${senderName}`,
+                body: `is listening to ${trackName}`,
+                data: { type: 'music', relationshipId: String(data.relationshipId) },
+              });
+            }
+          }
+        } catch (_) {}
+      }
     });
 
     socket.on('touch:send', (data) => {

@@ -2,6 +2,10 @@ const MusicSession = require('../models/MusicSession');
 const Playlist = require('../models/Playlist');
 const TimelineEvent = require('../models/TimelineEvent');
 const LoveTree = require('../models/LoveTree');
+const { getIo } = require('../config/socketInstance');
+const sendPushNotification = require('../utils/sendPushNotification');
+const User = require('../models/User');
+const Presence = require('../models/Presence');
 
 const requireRelationship = (req, res) => {
   if (!req.user.relationshipId) {
@@ -77,6 +81,41 @@ exports.updatePlayback = async (req, res) => {
     });
     const tree = await LoveTree.findOne({ relationshipId: req.user.relationshipId });
     if (tree) { tree.musicPoints += 5; tree.points += 5; tree.lastWatered = new Date(); await tree.save(); }
+  }
+
+  // Emit socket event so partner gets real-time sync
+  const io = getIo();
+  if (io) {
+    io.to(`relationship:${req.user.relationshipId}`).emit('music:sync', {
+      action,
+      currentTrack: session.currentTrack,
+      isPlaying: session.isPlaying,
+      position: session.position,
+      updatedBy: req.user._id,
+    });
+  }
+
+  // FCM: notify partner if offline and a new song started
+  if (action === 'play' || action === 'set_track') {
+    try {
+      const sender = await User.findById(req.user._id).select('nickname name partnerId');
+      if (sender?.partnerId) {
+        const partnerPresence = await Presence.findOne({ userId: sender.partnerId });
+        if (!partnerPresence?.isOnline) {
+          const partner = await User.findById(sender.partnerId).select('fcmToken');
+          if (partner?.fcmToken) {
+            const senderName = sender.nickname || sender.name || 'Partner';
+            const trackName = session.currentTrack?.title || 'a song';
+            await sendPushNotification({
+              fcmToken: partner.fcmToken,
+              title: `🎵 ${senderName}`,
+              body: `is listening to ${trackName}`,
+              data: { type: 'music', relationshipId: String(req.user.relationshipId) },
+            });
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   res.json({ success: true, message: `Playback updated: ${action}`, data: { session } });
