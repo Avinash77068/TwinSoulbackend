@@ -5,7 +5,7 @@ const timelineEventSchema = new mongoose.Schema({
   eventType: {
     type: String,
     enum: ['first_connection', 'first_chat', 'first_photo', 'first_diary', 'first_music',
-      'first_anniversary', 'anniversary', 'milestone', 'custom'],
+      'first_anniversary', 'anniversary', 'milestone', 'custom', 'reunion'],
     required: true,
   },
   title: { type: String, required: true },
