@@ -11,16 +11,19 @@ const requireRelationship = (req, res) => {
   return true;
 };
 
+const CHAT_STAGES = [
+  { name: 'seed', min: 0 }, { name: 'plant', min: 50 }, { name: 'tree', min: 200 },
+  { name: 'blooming', min: 500 }, { name: 'golden', min: 1000 }, { name: 'legendary', min: 2000 },
+];
+
 const addLoveTreePoints = async (relationshipId, points, field) => {
-  const STAGES = [
-    { name: 'seed', min: 0 }, { name: 'plant', min: 50 }, { name: 'tree', min: 200 },
-    { name: 'blooming', min: 500 }, { name: 'golden', min: 1000 }, { name: 'legendary', min: 2000 },
-  ];
   const tree = await LoveTree.findOne({ relationshipId });
   if (!tree) return;
-  tree[field] = (tree[field] || 0) + points;
-  tree.points += points;
-  const stage = STAGES.filter(s => tree.points >= s.min).pop();
+  // Heal legacy documents that may have undefined/NaN numeric fields
+  tree[field] = (Number(tree[field]) || 0) + points;
+  tree.points = (Number(tree.points) || 0) + points;
+  // Bug fix: always fall back to CHAT_STAGES[0] so stage.name never throws
+  const stage = CHAT_STAGES.filter(s => tree.points >= s.min).pop() || CHAT_STAGES[0];
   tree.stage = stage.name;
   tree.lastWatered = new Date();
   await tree.save();
