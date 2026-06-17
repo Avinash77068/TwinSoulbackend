@@ -15,10 +15,6 @@ const SAMPLE_TRACKS = [
 
 async function seed() {
   await mongoose.connect(process.env.MONGO_URI);
-  console.log('Seeding music data...');
-  console.log('Sample tracks available:', SAMPLE_TRACKS.length);
-  console.log('Tracks:', SAMPLE_TRACKS.map(t => `${t.title} - ${t.artist}`).join('\n'));
-  console.log('Music seed data ready!');
   await mongoose.disconnect();
 }
 

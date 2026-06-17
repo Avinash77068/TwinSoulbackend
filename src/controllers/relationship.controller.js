@@ -289,7 +289,6 @@ exports.requestLeave = async (req, res) => {
   if (io) {
     const leaverName = req.user.nickname || req.user.name || 'Your partner';
     const partnerRoom = `user:${partnerId.toString()}`;
-    console.log(`[Leave] emitting relationship:left → ${partnerRoom}, leaverName: ${leaverName}`);
     io.to(partnerRoom).emit('relationship:left', { leaverName });
   } else {
     console.warn('[Leave] io not available');

@@ -9,6 +9,5 @@ router.get('/profile', protect, c.getProfile);
 router.put('/profile', protect, upload.single('profilePhoto'), c.updateProfile);
 router.post('/regenerate-codes', protect, c.regenerateCodes);
 router.post('/fcm-token', protect, c.saveFcmToken);
-router.post('/logout', protect, c.logout);
 
 module.exports = router;

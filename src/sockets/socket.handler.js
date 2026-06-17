@@ -18,7 +18,6 @@ module.exports = (io) => {
 
   io.on('connection', async (socket) => {
     const userId = socket.userId;
-    console.log(`Socket connected: ${userId}`);
 
     await Promise.all([
       Presence.findOneAndUpdate(
@@ -38,16 +37,12 @@ module.exports = (io) => {
     socket.join(`user:${userId}`);
 
     socket.on('message:send', async (data) => {
-      console.log(`[Socket] message:send received | from: ${userId} | relationshipId: ${data.relationshipId} | type: ${data.type} | content: "${String(data.content || '').slice(0, 50)}"`);
-
       const room = `relationship:${data.relationshipId}`;
-      console.log(`[Socket] Emitting message:new to room: ${room}`);
       socket.to(room).emit('message:new', data);
       // FCM: notify partner if they are offline
       try {
         if (user?.partnerId) {
           const partnerPresence = await Presence.findOne({ userId: user.partnerId });
-          console.log(`[Socket] FCM check | partner: ${user.partnerId} | isOnline: ${partnerPresence?.isOnline}`);
           if (!partnerPresence?.isOnline) {
             const partner = await User.findById(user.partnerId).select('fcmToken');
             if (partner?.fcmToken) {
@@ -61,7 +56,6 @@ module.exports = (io) => {
                   ? '🎤 Voice message'
                   : '💬 New message';
 
-              console.log(`[Socket] Sending FCM to partner | preview: "${messagePreview}" | fcmToken: ${partner.fcmToken.slice(0, 20)}...`);
               await sendPushNotification({
                 fcmToken: partner.fcmToken,
                 title: senderName,
@@ -72,15 +66,8 @@ module.exports = (io) => {
                   senderId: String(userId),
                 },
               });
-              console.log(`[Socket] FCM sent successfully`);
-            } else {
-              console.log(`[Socket] Partner has no FCM token, skipping push notification`);
             }
-          } else {
-            console.log(`[Socket] Partner is online, skipping FCM`);
           }
-        } else {
-          console.log(`[Socket] No partnerId found for user: ${userId}, skipping FCM`);
         }
       } catch (err) {
         console.error('[Socket] FCM send failed:', err.message);
@@ -97,8 +84,6 @@ module.exports = (io) => {
 
     socket.on('music:update', async (data) => {
       const room = `relationship:${data.relationshipId}`;
-      console.log(`[Socket] music:update received | from: ${userId} | action: ${data.action}`);
-      console.log(`[Socket] Emitting music:sync to room: ${room}`);
       io.to(room).emit('music:sync', data);
 
       // FCM: notify partner if offline and a new song started
@@ -135,7 +120,6 @@ module.exports = (io) => {
     });
 
     socket.on('disconnect', async () => {
-      console.log(`Socket disconnected: ${userId}`);
       const now = new Date();
       await Promise.all([
         Presence.findOneAndUpdate(

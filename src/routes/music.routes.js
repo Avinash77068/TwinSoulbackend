@@ -16,4 +16,12 @@ router.put('/playlists/:id', protect, c.updatePlaylist);
 router.delete('/playlists/:id', protect, c.deletePlaylist);
 router.post('/playlists/:id/tracks', protect, c.addTrackToPlaylist);
 
+// JioSaavn Search
+router.get('/search', protect, c.searchSongs);
+router.get('/search/:id', protect, c.getSongDetails);
+router.get('/search/:id/lyrics', protect, c.getSongLyrics);
+
+// Audio stream proxy — fetches from JioSaavn CDN with proper headers
+router.get('/stream/:id', protect, c.streamSong);
+
 module.exports = router;

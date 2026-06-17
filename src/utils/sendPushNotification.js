@@ -22,7 +22,7 @@ const sendPushNotification = async ({ fcmToken, title, body, data = {} }) => {
         payload: { aps: { sound: 'default', badge: 1 } },
       },
     });
-    console.log(`[FCM] Sent to ${fcmToken.slice(0, 20)}...`);
+    
   } catch (err) {
     if (
       err.code === 'messaging/invalid-registration-token' ||
