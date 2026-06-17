@@ -132,5 +132,8 @@ module.exports = (io) => {
         socket.to(`relationship:${user.relationshipId}`).emit('partner:offline', { userId });
       }
     });
+
+    // ── Call signaling ────────────────────────────────────────────────────
+    require('./call.socket')(io, socket);
   });
 };
