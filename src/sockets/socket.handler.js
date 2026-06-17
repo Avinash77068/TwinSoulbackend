@@ -82,6 +82,15 @@ module.exports = (io) => {
       socket.to(`relationship:${data.relationshipId}`).emit('partner:mood', data);
     });
 
+    // ── Watch party ───────────────────────────────────────────────────────
+    socket.on('watch:start', (data) => {
+      socket.to(`relationship:${data.relationshipId}`).emit('watch:start', data);
+    });
+
+    socket.on('watch:sync', (data) => {
+      socket.to(`relationship:${data.relationshipId}`).emit('watch:sync', data);
+    });
+
     socket.on('music:update', async (data) => {
       const room = `relationship:${data.relationshipId}`;
       io.to(room).emit('music:sync', data);
@@ -132,5 +141,8 @@ module.exports = (io) => {
         socket.to(`relationship:${user.relationshipId}`).emit('partner:offline', { userId });
       }
     });
+
+    // ── Call signaling ────────────────────────────────────────────────────
+    require('./call.socket')(io, socket);
   });
 };
