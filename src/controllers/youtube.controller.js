@@ -32,12 +32,13 @@ exports.search = async (req, res) => {
   res.json({ success: true, data: { videos } });
 };
 
-// GET /api/youtube/trending
+// GET /api/youtube/trending — getTrending deprecated, fallback to popular search
 exports.trending = async (req, res) => {
   const yt = await getYoutube();
-  const feed = await yt.getTrending();
+  const year = new Date().getFullYear();
+  const results = await yt.search(`trending music videos ${year}`);
 
-  const videos = (feed.videos ?? [])
+  const videos = (results.results ?? [])
     .slice(0, 12)
     .map(v => ({
       id: v.id,
