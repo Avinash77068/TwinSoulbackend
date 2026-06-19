@@ -82,13 +82,36 @@ module.exports = (io) => {
       socket.to(`relationship:${data.relationshipId}`).emit('partner:mood', data);
     });
 
-    // ── Watch party ───────────────────────────────────────────────────────
+    // ── Watch party (legacy) ──────────────────────────────────────────────
     socket.on('watch:start', (data) => {
       socket.to(`relationship:${data.relationshipId}`).emit('watch:start', data);
     });
 
     socket.on('watch:sync', (data) => {
       socket.to(`relationship:${data.relationshipId}`).emit('watch:sync', data);
+    });
+
+    // ── Watch Together (YouTube sync) ─────────────────────────────────────
+    socket.on('watchTogether:setVideo', (data) => {
+      socket.to(`relationship:${user.relationshipId}`).emit('watchTogether:setVideo', data);
+    });
+
+    socket.on('watchTogether:play', (data) => {
+      socket.to(`relationship:${user.relationshipId}`).emit('watchTogether:play', data);
+    });
+
+    socket.on('watchTogether:pause', (data) => {
+      socket.to(`relationship:${user.relationshipId}`).emit('watchTogether:pause', data);
+    });
+
+    socket.on('watchTogether:seek', (data) => {
+      socket.to(`relationship:${user.relationshipId}`).emit('watchTogether:seek', data);
+    });
+
+    socket.on('watchTogether:leave', () => {
+      socket.to(`relationship:${user.relationshipId}`).emit('watchTogether:leave', {
+        name: user.nickname || user.name,
+      });
     });
 
     socket.on('music:update', async (data) => {
