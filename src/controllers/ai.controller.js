@@ -9,6 +9,7 @@ const requireRelationship = (req, res) => {
   return true;
 };
 
+
 const SUGGESTIONS = [
   'Plan a surprise candlelight dinner at home 🕯️',
   'Write your partner a heartfelt letter 💌',
