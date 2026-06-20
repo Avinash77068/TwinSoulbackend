@@ -98,14 +98,50 @@ module.exports = (io) => {
     });
 
     // ── Watch Together — use user.relationshipId directly (already safe) ──
-    socket.on('watchTogether:setVideo', (data) => {
+    socket.on('watchTogether:setVideo', async (data) => {
       if (!user?.relationshipId) return;
       socket.to(`relationship:${user.relationshipId}`).emit('watchTogether:setVideo', data);
+      if (!user?.partnerId) return;
+      try {
+        const partnerPresence = await Presence.findOne({ userId: user.partnerId });
+        const senderName = user.nickname || user.name || 'Partner';
+        if (!partnerPresence?.isOnline) {
+          const partner = await User.findById(user.partnerId).select('fcmToken');
+          if (partner?.fcmToken) {
+            await sendPushNotification({
+              fcmToken: partner.fcmToken,
+              title: `🎬 ${senderName}`,
+              body: 'Watch Together pe aao! Video shuru ho gayi',
+              data: { type: 'watchTogether', videoId: String(data?.id ?? ''), relationshipId: String(user.relationshipId) },
+            });
+          }
+        }
+      } catch (err) {
+        console.error('[Socket] watchTogether:setVideo FCM failed:', err.message);
+      }
     });
 
-    socket.on('watchTogether:play', (data) => {
+    socket.on('watchTogether:play', async (data) => {
       if (!user?.relationshipId) return;
       socket.to(`relationship:${user.relationshipId}`).emit('watchTogether:play', data);
+      if (!user?.partnerId) return;
+      try {
+        const partnerPresence = await Presence.findOne({ userId: user.partnerId });
+        if (!partnerPresence?.isOnline) {
+          const partner = await User.findById(user.partnerId).select('fcmToken');
+          const senderName = user.nickname || user.name || 'Partner';
+          if (partner?.fcmToken) {
+            await sendPushNotification({
+              fcmToken: partner.fcmToken,
+              title: `▶️ ${senderName}`,
+              body: 'Video play ki — join karo Watch Together!',
+              data: { type: 'watchTogether', videoId: String(data?.videoId ?? ''), relationshipId: String(user.relationshipId) },
+            });
+          }
+        }
+      } catch (err) {
+        console.error('[Socket] watchTogether:play FCM failed:', err.message);
+      }
     });
 
     socket.on('watchTogether:pause', (data) => {
@@ -118,11 +154,26 @@ module.exports = (io) => {
       socket.to(`relationship:${user.relationshipId}`).emit('watchTogether:seek', data);
     });
 
-    socket.on('watchTogether:leave', () => {
+    socket.on('watchTogether:leave', async () => {
       if (!user?.relationshipId) return;
+      const senderName = user.nickname || user.name || 'Partner';
       socket.to(`relationship:${user.relationshipId}`).emit('watchTogether:leave', {
-        name: user.nickname || user.name,
+        name: senderName,
       });
+      if (!user?.partnerId) return;
+      try {
+        const partner = await User.findById(user.partnerId).select('fcmToken');
+        if (partner?.fcmToken) {
+          await sendPushNotification({
+            fcmToken: partner.fcmToken,
+            title: `👋 ${senderName}`,
+            body: 'Watch Together session chhod diya',
+            data: { type: 'watchTogether_leave', relationshipId: String(user.relationshipId) },
+          });
+        }
+      } catch (err) {
+        console.error('[Socket] watchTogether:leave FCM failed:', err.message);
+      }
     });
 
     // ── Music ─────────────────────────────────────────────────────────────────
