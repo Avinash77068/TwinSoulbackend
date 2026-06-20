@@ -5,9 +5,13 @@ const LoveTree = require('../models/LoveTree');
 const RelationshipLevel = require('../models/RelationshipLevel');
 const TimelineEvent = require('../models/TimelineEvent');
 const Presence = require('../models/Presence');
+const PendingRegistration = require('../models/PendingRegistration');
 
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
+
+const signPendingToken = (email) =>
+  jwt.sign({ email, type: 'pending' }, process.env.JWT_SECRET, { expiresIn: '30m' });
 
 const generateCoupleCode = () => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -19,15 +23,86 @@ const generateCoupleCode = () => {
 const generateConnectionPassword = () =>
   Math.floor(1000 + Math.random() * 9000).toString();
 
+const generateOtp = () =>
+  Math.floor(100000 + Math.random() * 900000).toString();
+
+// Step 1: collect registration data, generate OTP — user not created yet
 exports.register = async (req, res) => {
   const { name, nickname, email, password, relationshipStartDate } = req.body;
 
-  if (!name || !nickname || !email || !password) {
-    return res.status(400).json({ success: false, message: 'All fields are required' });
+  if (!name || !email || !password) {
+    return res.status(400).json({ success: false, message: 'Name, email and password are required' });
   }
 
   const existing = await User.findOne({ email });
   if (existing) return res.status(409).json({ success: false, message: 'Email already registered' });
+
+  const otp = generateOtp();
+
+  // Upsert: agar pehle se pending hai toh replace karo (re-register case)
+  await PendingRegistration.findOneAndUpdate(
+    { email: email.toLowerCase() },
+    { name, nickname: nickname || '', email, password, relationshipStartDate: relationshipStartDate || null, otp, otpVerified: false, createdAt: new Date() },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  );
+
+  // TODO: send OTP to email via an email service
+  res.status(200).json({
+    success: true,
+    message: 'OTP sent to your email',
+    otp, // visible in dev — remove in production
+  });
+};
+
+// Step 2: verify OTP — still no user created
+exports.verifyOtp = async (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) {
+    return res.status(400).json({ success: false, message: 'Email and OTP are required' });
+  }
+
+  const pending = await PendingRegistration.findOne({ email: email.toLowerCase() });
+  if (!pending) {
+    return res.status(400).json({ success: false, message: 'No pending registration found. Please register again.' });
+  }
+
+  if (pending.otp !== otp.toString()) {
+    return res.status(400).json({ success: false, message: 'Invalid OTP' });
+  }
+
+  pending.otpVerified = true;
+  await pending.save();
+
+  const pendingToken = signPendingToken(email);
+  res.json({ success: true, message: 'OTP verified successfully', pendingToken });
+};
+
+// Step 3: called right after OTP — this is where the user is actually created
+exports.completeRegistration = async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ success: false, message: 'Pending token required' });
+  }
+
+  let pendingEmail;
+  try {
+    const payload = jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET);
+    if (payload.type !== 'pending') throw new Error('Invalid token type');
+    pendingEmail = payload.email;
+  } catch (_) {
+    return res.status(401).json({ success: false, message: 'Invalid or expired pending token' });
+  }
+
+  const pending = await PendingRegistration.findOne({ email: pendingEmail.toLowerCase() });
+  if (!pending || !pending.otpVerified) {
+    return res.status(400).json({ success: false, message: 'OTP not verified. Please restart registration.' });
+  }
+
+  const existing = await User.findOne({ email: pendingEmail });
+  if (existing) {
+    await PendingRegistration.deleteOne({ email: pendingEmail.toLowerCase() });
+    return res.status(409).json({ success: false, message: 'Email already registered' });
+  }
 
   let coupleCode;
   let attempts = 0;
@@ -40,14 +115,18 @@ exports.register = async (req, res) => {
   const connectionPassword = generateConnectionPassword();
 
   const user = await User.create({
-    name, nickname, email, password,
-    relationshipStartDate: relationshipStartDate || null,
+    name: pending.name,
+    nickname: pending.nickname || pending.name,
+    email: pending.email,
+    password: pending.password,
+    relationshipStartDate: pending.relationshipStartDate || undefined,
     coupleCode,
     connectionPassword,
     isVerified: true,
   });
 
   await Presence.create({ userId: user._id });
+  await PendingRegistration.deleteOne({ email: pendingEmail.toLowerCase() });
 
   const token = signToken(user._id);
 
