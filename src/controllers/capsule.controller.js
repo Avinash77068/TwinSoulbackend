@@ -53,7 +53,7 @@ exports.createCapsule = async (req, res) => {
     creatorId: req.user._id,
     title,
     note: note || '',
-    mediaUrl: req.file ? `/uploads/${req.file.filename}` : '',
+    mediaUrl: req.file ? req.file.cloudUrl : '',
     unlockAt,
   });
 

@@ -112,7 +112,7 @@ exports.updateProfile = async (req, res) => {
   if (nickname) updates.nickname = nickname;
   if (relationshipStartDate) updates.relationshipStartDate = relationshipStartDate;
   if (fcmToken) updates.fcmToken = fcmToken;
-  if (req.file) updates.profilePhoto = `/uploads/${req.file.filename}`;
+  if (req.file) updates.profilePhoto = req.file.cloudUrl;
 
   const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true }).select('-password');
   res.json({ success: true, message: 'Profile updated', data: { user } });

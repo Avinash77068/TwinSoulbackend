@@ -1,10 +1,10 @@
 const router = require('express').Router();
 const { protect } = require('../middleware/auth');
-const upload = require('../middleware/upload');
+const { upload, handleR2Upload } = require('../middleware/upload');
 const c = require('../controllers/photos.controller');
 
 router.get('/', protect, c.getPhotos);
-router.post('/upload', protect, upload.single('photo'), c.uploadPhoto);
+router.post('/upload', protect, upload.single('photo'), handleR2Upload, c.uploadPhoto);
 router.delete('/:id', protect, c.deletePhoto);
 router.put('/:id/favorite', protect, c.toggleFavorite);
 router.post('/:id/comment', protect, c.addComment);

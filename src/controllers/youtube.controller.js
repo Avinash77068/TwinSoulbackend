@@ -1,19 +1,18 @@
 const { Innertube } = require('youtubei.js');
 
-// Single shared instance — Innertube.create() is expensive, reuse it
-let youtube = null;
+let youtubePromise = null;
+const getYoutube = () => youtubePromise ??= Innertube.create();
 
-const getYoutube = async () => {
-  if (!youtube) {
-    youtube = await Innertube.create();
-  }
-  return youtube;
-};
+const mapVideo = (v) => ({
+  id: v.id,
+  title: v.title?.text ?? 'Untitled',
+  thumbnail: v.thumbnails?.[0]?.url ?? null,
+});
 
 // GET /api/youtube/search?q=...
 exports.search = async (req, res) => {
   const { q } = req.query;
-  if (!q || !q.trim()) {
+  if (!q?.trim()) {
     return res.status(400).json({ success: false, message: 'Query required' });
   }
 
@@ -22,17 +21,13 @@ exports.search = async (req, res) => {
 
   const videos = (results.results ?? [])
     .slice(0, 12)
-    .map(v => ({
-      id: v.id,
-      title: v.title?.text ?? 'Untitled',
-      thumbnail: v.thumbnails?.[0]?.url ?? null,
-    }))
+    .map(mapVideo)
     .filter(v => v.id);
 
   res.json({ success: true, data: { videos } });
 };
 
-// GET /api/youtube/trending — getTrending deprecated, fallback to popular search
+// GET /api/youtube/trending
 exports.trending = async (req, res) => {
   const yt = await getYoutube();
   const year = new Date().getFullYear();
@@ -40,11 +35,7 @@ exports.trending = async (req, res) => {
 
   const videos = (results.results ?? [])
     .slice(0, 12)
-    .map(v => ({
-      id: v.id,
-      title: v.title?.text ?? 'Untitled',
-      thumbnail: v.thumbnails?.[0]?.url ?? null,
-    }))
+    .map(mapVideo)
     .filter(v => v.id);
 
   res.json({ success: true, data: { videos } });

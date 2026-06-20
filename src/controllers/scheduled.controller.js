@@ -31,7 +31,7 @@ exports.createScheduled = async (req, res) => {
     relationshipId: req.user.relationshipId,
     senderId: req.user._id,
     content, type,
-    mediaUrl: req.file ? `/uploads/${req.file.filename}` : '',
+    mediaUrl: req.file ? req.file.cloudUrl : '',
     scheduledAt: new Date(scheduledAt),
   });
   res.status(201).json({ success: true, message: 'Message scheduled', data: { message } });

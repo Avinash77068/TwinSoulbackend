@@ -19,7 +19,7 @@ exports.uploadPhoto = async (req, res) => {
   const photo = await Photo.create({
     relationshipId: req.user.relationshipId,
     uploaderId: req.user._id,
-    url: `/uploads/${req.file.filename}`,
+    url: req.file.cloudUrl,
     caption: caption || '',
     albumId: albumId || null,
     location: { name: locationName || '', lat: lat ? Number(lat) : undefined, lng: lng ? Number(lng) : undefined },
@@ -66,9 +66,6 @@ exports.deletePhoto = async (req, res) => {
   if (!requireRelationship(req, res)) return;
   const photo = await Photo.findOne({ _id: req.params.id, relationshipId: req.user.relationshipId });
   if (!photo) return res.status(404).json({ success: false, message: 'Photo not found' });
-  if (photo.uploaderId.toString() !== req.user._id.toString()) {
-    return res.status(403).json({ success: false, message: 'Cannot delete partner photo' });
-  }
   photo.isDeleted = true;
   await photo.save();
   res.json({ success: true, message: 'Photo deleted' });

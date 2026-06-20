@@ -1,6 +1,5 @@
 require('dotenv').config({ path: `${__dirname}/.env` });
 
-// Global crash guards — keep server alive on unhandled errors
 process.on('uncaughtException', (err) => {
   console.error('[uncaughtException]', err.message, err.stack);
 });
@@ -12,6 +11,8 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 const cron = require('node-cron');
@@ -22,24 +23,53 @@ connectDB();
 
 const app = express();
 const server = http.createServer(app);
+
+// ── CORS origins ────────────────────────────────────────────────────────────
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : ['http://localhost:8081']; // RN metro dev server
+
 const io = new Server(server, {
-  cors: { origin: '*', methods: ['GET', 'POST'] },
+  cors: { origin: ALLOWED_ORIGINS, methods: ['GET', 'POST'] },
 });
 
 require('./src/sockets/socket.handler')(io);
 require('./src/config/socketInstance').setIo(io);
 
-app.use(cors());
+// ── Security & perf middleware ────────────────────────────────────────────────
+app.use(helmet({ contentSecurityPolicy: false })); // CSP off — mobile API, no browser HTML
+app.use(compression());
+app.use(cors({ origin: ALLOWED_ORIGINS }));
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+
+// Static uploads kept for backward compat with old file URLs
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// ── Rate limiting ─────────────────────────────────────────────────────────────
 app.set('trust proxy', 1);
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 2000, message: { success: false, message: 'Too many requests' } });
-app.use('/api', limiter);
 
+// Strict limit for auth routes (prevent brute-force)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  message: { success: false, message: 'Too many attempts, try again later' },
+});
+
+// General API limit
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  message: { success: false, message: 'Too many requests' },
+});
+
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api', apiLimiter);
+
+// ── Routes ────────────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'SoulSync API is running ❤️', version: '1.0.0', timestamp: new Date() });
+  res.json({ success: true, message: 'TwinSoul API running ❤️', version: '1.0.0', timestamp: new Date() });
 });
 
 app.use('/api/auth', require('./src/routes/auth.routes'));
@@ -64,7 +94,7 @@ app.use('/api/youtube', require('./src/routes/youtube.routes'));
 app.use(notFound);
 app.use(errorHandler);
 
-// Cron: deliver scheduled messages every minute
+// ── Cron: deliver scheduled messages ─────────────────────────────────────────
 cron.schedule('* * * * *', async () => {
   try {
     const ScheduledMessage = require('./src/models/ScheduledMessage');
@@ -87,13 +117,13 @@ cron.schedule('* * * * *', async () => {
       await sm.save();
       io.to(`relationship:${sm.relationshipId}`).emit('message:new', { content: sm.content, type: 'scheduled' });
     }
-    if (pending.length > 0) console.log(`Delivered ${pending.length} scheduled message(s)`);
+    if (pending.length > 0) console.log(`[Cron] Delivered ${pending.length} scheduled message(s)`);
   } catch (err) {
-    console.error('Cron error:', err.message);
+    console.error('[Cron] Scheduled messages error:', err.message);
   }
 });
 
-// Cron: mark users offline if no heartbeat for 2 minutes
+// ── Cron: mark users offline after 2min no heartbeat ─────────────────────────
 cron.schedule('*/2 * * * *', async () => {
   try {
     const Presence = require('./src/models/Presence');
@@ -103,9 +133,9 @@ cron.schedule('*/2 * * * *', async () => {
       { isOnline: false, lastSeen: new Date() }
     );
   } catch (err) {
-    console.error('Presence cron error:', err.message);
+    console.error('[Cron] Presence error:', err.message);
   }
 });
 
 const PORT = process.env.PORT || 8000;
-server.listen(PORT, () => console.log(`SoulSync server running on port ${PORT} ❤️`));
+server.listen(PORT, () => console.log(`TwinSoul server running on port ${PORT} ❤️`));

@@ -1,10 +1,10 @@
 const router = require('express').Router();
 const { protect } = require('../middleware/auth');
-const upload = require('../middleware/upload');
+const { upload, handleR2Upload } = require('../middleware/upload');
 const c = require('../controllers/chat.controller');
 
 router.get('/messages', protect, c.getMessages);
-router.post('/messages', protect, upload.single('media'), c.sendMessage);
+router.post('/messages', protect, upload.single('media'), handleR2Upload, c.sendMessage);
 router.delete('/messages/:id', protect, c.deleteMessage);
 router.post('/messages/:id/react', protect, c.reactToMessage);
 router.delete('/messages/:id/react', protect, c.removeReaction);

@@ -64,7 +64,7 @@ exports.sendMessage = async (req, res) => {
     senderId: req.user._id,
     content: content || '',
     type,
-    mediaUrl: req.file ? `/uploads/${req.file.filename}` : '',
+    mediaUrl: req.file ? req.file.cloudUrl : '',
     replyTo: replyTo || null,
     isSecret,
   });
