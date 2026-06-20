@@ -1,6 +1,7 @@
 const Diary = require('../models/Diary');
 const LoveTree = require('../models/LoveTree');
 const TimelineEvent = require('../models/TimelineEvent');
+const awardXP = require('../utils/awardXP');
 
 const requireRelationship = (req, res) => {
   if (!req.user.relationshipId) {
@@ -38,6 +39,7 @@ exports.createEntry = async (req, res) => {
   const tree = await LoveTree.findOne({ relationshipId: req.user.relationshipId });
   if (tree) { tree.diaryPoints += 5; tree.points += 5; tree.lastWatered = new Date(); await tree.save(); }
 
+  awardXP(req.user.relationshipId, 8); // +8 XP per diary entry
   res.status(201).json({ success: true, message: 'Diary entry created', data: { entry } });
 };
 

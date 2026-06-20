@@ -1,6 +1,7 @@
 const Message = require('../models/Message');
 const LoveTree = require('../models/LoveTree');
 const TimelineEvent = require('../models/TimelineEvent');
+const awardXP = require('../utils/awardXP');
 const { getIo } = require('../config/socketInstance');
 
 const requireRelationship = (req, res) => {
@@ -86,6 +87,7 @@ exports.sendMessage = async (req, res) => {
   }
 
   await addLoveTreePoints(req.user.relationshipId, 1, 'chatPoints');
+  awardXP(req.user.relationshipId, 2); // +2 XP per message
   await message.populate('senderId', 'name nickname profilePhoto');
 
   const io = getIo();

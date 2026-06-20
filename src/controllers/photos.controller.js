@@ -2,6 +2,7 @@ const Photo = require('../models/Photo');
 const Album = require('../models/Album');
 const LoveTree = require('../models/LoveTree');
 const TimelineEvent = require('../models/TimelineEvent');
+const awardXP = require('../utils/awardXP');
 
 const requireRelationship = (req, res) => {
   if (!req.user.relationshipId) {
@@ -40,6 +41,7 @@ exports.uploadPhoto = async (req, res) => {
   const tree = await LoveTree.findOne({ relationshipId: req.user.relationshipId });
   if (tree) { tree.photoPoints += 3; tree.points += 3; tree.lastWatered = new Date(); await tree.save(); }
 
+  awardXP(req.user.relationshipId, 10); // +10 XP per photo
   res.status(201).json({ success: true, message: 'Photo uploaded', data: { photo } });
 };
 

@@ -1,6 +1,7 @@
 const MoodEntry = require('../models/MoodEntry');
 const LoveTree = require('../models/LoveTree');
 const { getIo } = require('../config/socketInstance');
+const awardXP = require('../utils/awardXP');
 
 const requireRelationship = (req, res) => {
   if (!req.user.relationshipId) {
@@ -43,6 +44,7 @@ exports.checkin = async (req, res) => {
     }
   }
 
+  awardXP(req.user.relationshipId, 8); // +8 XP per mood check-in
   res.json({ success: true, message: 'Mood checked in ❤️', data: { mood: entry } });
 };
 

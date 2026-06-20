@@ -2,6 +2,7 @@ const User = require('../models/User');
 const Presence = require('../models/Presence');
 const sendPushNotification = require('../utils/sendPushNotification');
 const callService = require('../services/call.service');
+const awardXP = require('../utils/awardXP');
 
 module.exports = (io, socket) => {
   const userId = String(socket.userId);
@@ -77,10 +78,17 @@ module.exports = (io, socket) => {
   });
 
   // ── call:end ──────────────────────────────────────────────────────────────
-  socket.on('call:end', ({ callId }) => {
+  socket.on('call:end', async ({ callId }) => {
     const call = callService.getActiveCall(callId);
     if (!call) return;
     const otherId = call.callerId === userId ? call.calleeId : call.callerId;
+
+    // Award XP if call was actually connected
+    if (call.status === 'connected' || call.status === 'connecting') {
+      const caller = await User.findById(call.callerId).select('relationshipId');
+      if (caller?.relationshipId) awardXP(caller.relationshipId, 15); // +15 XP per call
+    }
+
     callService.removeCall(callId);
     io.to(`user:${otherId}`).emit('call:ended', { callId });
     socket.emit('call:ended', { callId });
