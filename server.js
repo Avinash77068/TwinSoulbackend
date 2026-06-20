@@ -90,6 +90,7 @@ app.use('/api/ai', require('./src/routes/ai.routes'));
 app.use('/api/notifications', require('./src/routes/notifications.routes'));
 app.use('/api/presence', require('./src/routes/presence.routes'));
 app.use('/api/youtube', require('./src/routes/youtube.routes'));
+app.use('/api/theme',  require('./src/routes/theme.routes'));
 
 app.use(notFound);
 app.use(errorHandler);
