@@ -9,6 +9,8 @@ const sendPushNotification = async ({ fcmToken, title, body, data = {} }) => {
     stringData[k] = String(v);
   }
 
+  const isCall = data.type === 'incoming_call';
+
   try {
     await getMessaging().send({
       token: fcmToken,
@@ -16,10 +18,19 @@ const sendPushNotification = async ({ fcmToken, title, body, data = {} }) => {
       data: stringData,
       android: {
         priority: 'high',
-        notification: { sound: 'default', channelId: 'default' },
+        notification: {
+          sound: isCall ? 'ringtone' : 'default',
+          channelId: isCall ? 'twinsoul_calls' : 'twinsoul_default',
+        },
       },
       apns: {
-        payload: { aps: { sound: 'default', badge: 1 } },
+        payload: {
+          aps: {
+            sound: isCall ? 'ringtone.caf' : 'default',
+            badge: 1,
+            'content-available': 1,
+          },
+        },
       },
     });
     

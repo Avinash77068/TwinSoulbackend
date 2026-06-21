@@ -71,20 +71,24 @@ module.exports = (io, socket) => {
         ringTimeouts.delete(callId);
       }, 45_000);
       ringTimeouts.set(callId, timeout);
-
-      // FCM fallback if callee is offline
+      
       try {
-        const partnerPresence = await Presence.findOne({ userId: calleeId });
-        if (!partnerPresence?.isOnline) {
-          const callee = await User.findById(calleeId).select('fcmToken');
-          if (callee?.fcmToken) {
-            await sendPushNotification({
-              fcmToken: callee.fcmToken,
-              title: `📞 ${callerName} is calling`,
-              body: `${type === 'video' ? '🎥 Video' : '🎤 Audio'} call — tap to answer`,
-              data: { type: 'incoming_call', callType: type, callerId: userId, callId },
-            });
-          }
+        const callee = await User.findById(calleeId).select('fcmToken');
+        if (callee?.fcmToken) {
+          await sendPushNotification({
+            fcmToken: callee.fcmToken,
+            title: `📞 ${callerName} is calling`,
+            body: `${type === 'video' ? '🎥 Video' : '🎤 Audio'} call — tap to answer`,
+            data: {
+              type:           'incoming_call',
+              callId,
+              callType:       type,
+              callerId:       userId,
+              callerName,
+              callerPhoto:    caller.profilePhoto ?? '',
+              relationshipId: String(caller.relationshipId),
+            },
+          });
         }
       } catch (_) {}
     } catch (err) {
