@@ -72,23 +72,28 @@ module.exports = (io, socket) => {
       }, 45_000);
       ringTimeouts.set(callId, timeout);
       
+      // FCM sirf tab bhejo jab callee ka socket connected nahi (background/killed)
+      // Socket connected hai to modal already show ho jaayega — duplicate avoid karo
       try {
-        const callee = await User.findById(calleeId).select('fcmToken');
-        if (callee?.fcmToken) {
-          await sendPushNotification({
-            fcmToken: callee.fcmToken,
-            title: `📞 ${callerName} is calling`,
-            body: `${type === 'video' ? '🎥 Video' : '🎤 Audio'} call — tap to answer`,
-            data: {
-              type:           'incoming_call',
-              callId,
-              callType:       type,
-              callerId:       userId,
-              callerName,
-              callerPhoto:    caller.profilePhoto ?? '',
-              relationshipId: String(caller.relationshipId),
-            },
-          });
+        const calleeSockets = await io.in(`user:${calleeId}`).fetchSockets();
+        if (calleeSockets.length === 0) {
+          const callee = await User.findById(calleeId).select('fcmToken');
+          if (callee?.fcmToken) {
+            await sendPushNotification({
+              fcmToken: callee.fcmToken,
+              title: `📞 ${callerName} is calling`,
+              body: `${type === 'video' ? '🎥 Video' : '🎤 Audio'} call — tap to answer`,
+              data: {
+                type:           'incoming_call',
+                callId,
+                callType:       type,
+                callerId:       userId,
+                callerName,
+                callerPhoto:    caller.profilePhoto ?? '',
+                relationshipId: String(caller.relationshipId),
+              },
+            });
+          }
         }
       } catch (_) {}
     } catch (err) {
