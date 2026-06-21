@@ -245,6 +245,11 @@ exports.getDashboard = async (req, res) => {
   const startDate = relationship.startDate || relationship.createdAt;
   const daysTogether = Math.floor((Date.now() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24));
 
+  const defaultFeatures = {
+    voiceCall: true, videoCall: true, chat: true,
+    memories: true, music: true, loveTree: true, watchTogether: true,
+  };
+
   res.json({
     success: true,
     data: {
@@ -255,6 +260,7 @@ exports.getDashboard = async (req, res) => {
       recentPhotos,
       recentMessages,
       relationship: { status: relationship.status, startDate: relationship.startDate },
+      features: { ...defaultFeatures, ...(relationship.features?.toObject?.() ?? relationship.features ?? {}) },
     },
   });
 };
@@ -309,6 +315,38 @@ exports.cancelLeave = async (req, res) => {
 
   await relationship.save();
   res.json({ success: true, message: 'Leave request cancelled. Stay together! ❤️' });
+};
+
+exports.updateFeatures = async (req, res) => {
+  if (!req.user.relationshipId) {
+    return res.status(400).json({ success: false, message: 'Not in a relationship' });
+  }
+
+  const VALID_KEYS = ['voiceCall', 'videoCall', 'chat', 'memories', 'music', 'loveTree', 'watchTogether'];
+  const { featureKey, enabled } = req.body;
+
+  if (!VALID_KEYS.includes(featureKey)) {
+    return res.status(400).json({ success: false, message: `Invalid featureKey. Valid: ${VALID_KEYS.join(', ')}` });
+  }
+  if (typeof enabled !== 'boolean') {
+    return res.status(400).json({ success: false, message: 'enabled must be boolean' });
+  }
+
+  const relationship = await Relationship.findByIdAndUpdate(
+    req.user.relationshipId,
+    { [`features.${featureKey}`]: enabled },
+    { new: true },
+  );
+
+  // Live update — partner ko bhi bata do features change hui
+  const { getIo } = require('../config/socketInstance');
+  const io = getIo();
+  if (io) {
+    const room = `relationship:${relationship._id}`;
+    io.to(room).emit('features:updated', relationship.features);
+  }
+
+  res.json({ success: true, data: { features: relationship.features } });
 };
 
 exports.restoreRelationship = async (req, res) => {

@@ -11,5 +11,6 @@ router.get('/info', protect, c.getRelationshipInfo);
 router.post('/leave', protect, c.requestLeave);
 router.post('/cancel-leave', protect, c.cancelLeave);
 router.post('/restore', protect, c.restoreRelationship);
+router.patch('/features', protect, c.updateFeatures);
 
 module.exports = router;
