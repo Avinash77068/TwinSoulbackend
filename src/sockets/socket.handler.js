@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Presence = require('../models/Presence');
 const sendPushNotification = require('../utils/sendPushNotification');
+const callHandlers = require('./call.socket');
 
 // Guard: verify client-supplied relationshipId matches the authenticated user's
 const ownsRelationship = (user, relationshipId) =>
@@ -224,9 +225,11 @@ module.exports = (io) => {
       if (user?.relationshipId) {
         socket.to(`relationship:${user.relationshipId}`).emit('partner:offline', { userId });
       }
+      // FIX: centralized call cleanup on disconnect — prevents duplicate handlers
+      callHandlers.onUserDisconnect(io, userId);
     });
 
     // ── Call signaling ────────────────────────────────────────────────────
-    require('./call.socket')(io, socket);
+    callHandlers(io, socket);
   });
 };
