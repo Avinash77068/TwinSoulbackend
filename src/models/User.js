@@ -1,6 +1,16 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+const userMessageSchema = new mongoose.Schema({
+  messageId: { type: mongoose.Schema.Types.ObjectId, ref: 'Message' },
+  content: { type: String, default: '' },
+  type: { type: String, enum: ['text', 'voice', 'photo', 'note'], default: 'text' },
+  mediaUrl: { type: String, default: '' },
+  isSecret: { type: Boolean, default: false },
+  sentAt: { type: Date, default: Date.now },
+  toRelationshipId: { type: mongoose.Schema.Types.ObjectId, ref: 'Relationship' },
+}, { _id: false });
+
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   nickname: { type: String, trim: true, default: '' },
@@ -19,6 +29,7 @@ const userSchema = new mongoose.Schema({
   lastSeen: { type: Date, default: Date.now },
   isOnline: { type: Boolean, default: false },
   fcmToken: { type: String, default: '' },
+  messages: [userMessageSchema],
 }, { timestamps: true });
 
 userSchema.pre('save', async function () {

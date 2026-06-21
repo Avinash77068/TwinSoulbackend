@@ -1,4 +1,5 @@
 const Message = require('../models/Message');
+const User = require('../models/User');
 const LoveTree = require('../models/LoveTree');
 const TimelineEvent = require('../models/TimelineEvent');
 const awardXP = require('../utils/awardXP');
@@ -70,6 +71,21 @@ exports.sendMessage = async (req, res) => {
     isSecret,
   });
   console.log(`[Chat] Message saved to DB | messageId: ${message._id}`);
+
+  await User.findByIdAndUpdate(req.user._id, {
+    $push: {
+      messages: {
+        messageId: message._id,
+        content: message.content,
+        type: message.type,
+        mediaUrl: message.mediaUrl,
+        isSecret: message.isSecret,
+        sentAt: message.createdAt,
+        toRelationshipId: message.relationshipId,
+      },
+    },
+  });
+  console.log(`[Chat] Message pushed to user.messages array | userId: ${req.user._id}`);
 
   const msgCount = await Message.countDocuments({ relationshipId: req.user.relationshipId });
   console.log(`[Chat] Total messages in relationship: ${msgCount}`);
