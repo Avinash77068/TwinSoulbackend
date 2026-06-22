@@ -31,6 +31,10 @@ const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
 
 const io = new Server(server, {
   cors: { origin: ALLOWED_ORIGINS, methods: ['GET', 'POST'] },
+  // Heartbeat: ping every 60 s, allow 30 s for pong.
+  // Default is 25 s / 20 s — halving frequency cuts idle WebSocket traffic by ~60%.
+  pingInterval: 60_000,
+  pingTimeout:  30_000,
 });
 
 require('./src/sockets/socket.handler')(io);
@@ -91,6 +95,7 @@ app.use('/api/notifications', require('./src/routes/notifications.routes'));
 app.use('/api/presence', require('./src/routes/presence.routes'));
 app.use('/api/youtube', require('./src/routes/youtube.routes'));
 app.use('/api/theme',  require('./src/routes/theme.routes'));
+app.use('/api/calls',  require('./src/routes/call.routes'));
 
 app.use(notFound);
 app.use(errorHandler);
@@ -124,7 +129,9 @@ cron.schedule('* * * * *', async () => {
   }
 });
 
-// ── Cron: mark users offline after 2min no heartbeat ─────────────────────────
+// ── Cron: mark users offline after 2 min no heartbeat ────────────────────────
+// Client sends presence:heartbeat every 60 s so active users always have a
+// recent heartbeat.  2-minute cutoff gives a generous buffer for reconnects.
 cron.schedule('*/2 * * * *', async () => {
   try {
     const Presence = require('./src/models/Presence');
