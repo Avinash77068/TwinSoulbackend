@@ -50,6 +50,9 @@ app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 // Static uploads kept for backward compat with old file URLs
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Static app assets (icons, images) served from backend
+app.use('/assets', express.static(path.join(__dirname, 'public/assets')));
+
 // ── Rate limiting ─────────────────────────────────────────────────────────────
 app.set('trust proxy', 1);
 
