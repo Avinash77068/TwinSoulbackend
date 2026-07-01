@@ -22,6 +22,7 @@ exports.createEntry = async (req, res) => {
     title, content, mood: mood || 'happy',
     isPrivate,
     tags: tags || [],
+    photos: req.uploadedUrls || [],
   });
 
   const entryCount = await Diary.countDocuments({ relationshipId: req.user.relationshipId });
@@ -93,6 +94,15 @@ exports.updateEntry = async (req, res) => {
   if (mood) entry.mood = mood;
   if (isPrivate !== undefined) entry.isPrivate = isPrivate;
   if (tags) entry.tags = tags;
+
+  if (req.body.removePhotos) {
+    const toRemove = JSON.parse(req.body.removePhotos);
+    entry.photos = (entry.photos || []).filter(p => !toRemove.includes(p));
+  }
+  if (req.uploadedUrls?.length) {
+    entry.photos = [...(entry.photos || []), ...req.uploadedUrls];
+  }
+
   await entry.save();
   res.json({ success: true, message: 'Entry updated', data: { entry } });
 };

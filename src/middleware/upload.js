@@ -40,4 +40,17 @@ const handleCloudUpload = async (req, res, next) => {
 // Keep old name as alias so existing route imports don't break
 const handleR2Upload = handleCloudUpload;
 
-module.exports = { upload, handleCloudUpload, handleR2Upload };
+const handleMultiCloudUpload = async (req, res, next) => {
+  if (!req.files || req.files.length === 0) return next();
+  try {
+    const urls = await Promise.all(
+      req.files.map(f => uploadToCloud(f.buffer, String(req.user._id), f.mimetype)),
+    );
+    req.uploadedUrls = urls;
+    next();
+  } catch (err) {
+    next(new Error(`Upload failed: ${err.message}`));
+  }
+};
+
+module.exports = { upload, handleCloudUpload, handleR2Upload, handleMultiCloudUpload };

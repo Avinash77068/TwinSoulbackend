@@ -10,6 +10,7 @@ const diarySchema = new mongoose.Schema({
   isFavorite: { type: Boolean, default: false },
   isDeleted: { type: Boolean, default: false },
   tags: [{ type: String }],
+  photos: [{ type: String }],
 }, { timestamps: true });
 
 module.exports = mongoose.model('Diary', diarySchema);
