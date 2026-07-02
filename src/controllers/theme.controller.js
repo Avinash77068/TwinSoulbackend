@@ -13,12 +13,16 @@ const isValidColor = (val) => {
 
 const ALLOWED_KEYS = [
   'background', 'surface', 'surfaceAlt',
+  'bgGradient', 'bgGradientAngle',
   'primary', 'primaryMuted', 'accent',
   'text', 'textMuted', 'textFaint', 'textLabel',
   'border', 'borderStrong',
   'success', 'error', 'warning', 'online', 'offline',
   'badge', 'badgeBorder', 'badgeText',
 ];
+
+const isValidGradient = (val) =>
+  Array.isArray(val) && val.length >= 2 && val.every(isValidColor);
 
 // GET /api/theme  — public, no auth required
 exports.getTheme = async (req, res) => {
@@ -31,7 +35,7 @@ exports.getTheme = async (req, res) => {
 
     // Return only the color keys (not _id, __v, timestamps)
     const data = {};
-    ALLOWED_KEYS.forEach(k => { data[k] = theme[k]; });
+    ALLOWED_KEYS.forEach(k => { if (theme[k] !== undefined) data[k] = theme[k]; });
 
     res.json({ success: true, data });
   } catch (err) {
@@ -47,8 +51,18 @@ exports.updateTheme = async (req, res) => {
 
     for (const [key, val] of Object.entries(req.body)) {
       if (!ALLOWED_KEYS.includes(key)) { invalid.push(key); continue; }
-      if (!isValidColor(val))          { invalid.push(`${key}:${val}`); continue; }
-      updates[key] = val.trim();
+
+      if (key === 'bgGradient') {
+        if (!isValidGradient(val)) { invalid.push(`${key}:${JSON.stringify(val)}`); continue; }
+        updates[key] = val;
+      } else if (key === 'bgGradientAngle') {
+        const n = Number(val);
+        if (isNaN(n) || n < 0 || n > 360) { invalid.push(`${key}:${val}`); continue; }
+        updates[key] = n;
+      } else {
+        if (!isValidColor(val)) { invalid.push(`${key}:${val}`); continue; }
+        updates[key] = val.trim();
+      }
     }
 
     if (Object.keys(updates).length === 0) {
@@ -66,7 +80,7 @@ exports.updateTheme = async (req, res) => {
     );
 
     const data = {};
-    ALLOWED_KEYS.forEach(k => { data[k] = theme[k]; });
+    ALLOWED_KEYS.forEach(k => { if (theme[k] !== undefined) data[k] = theme[k]; });
 
     // Push to ALL connected devices — no restart needed
     const io = getIo();
@@ -90,7 +104,7 @@ exports.resetTheme = async (req, res) => {
     const theme = await Theme.create({ name: 'default' });
 
     const data = {};
-    ALLOWED_KEYS.forEach(k => { data[k] = theme[k]; });
+    ALLOWED_KEYS.forEach(k => { if (theme[k] !== undefined) data[k] = theme[k]; });
 
     const io = getIo();
     if (io) io.emit('theme:updated', data);

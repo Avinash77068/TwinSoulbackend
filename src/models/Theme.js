@@ -10,6 +10,10 @@ const themeSchema = new mongoose.Schema(
     surface:     { type: String, default: 'rgba(255,255,255,0.05)' },
     surfaceAlt:  { type: String, default: 'rgba(255,255,255,0.07)' },
 
+    // Gradient background
+    bgGradient:      { type: [String], default: ['#193543', '#0A0612', '#150A1E'] },
+    bgGradientAngle: { type: Number,   default: 160 },
+
     // Brand colours
     primary:      { type: String, default: '#EC4899' },
     primaryMuted: { type: String, default: 'rgba(236,72,153,0.15)' },
