@@ -12,6 +12,7 @@ const isValidColor = (val) => {
 };
 
 const ALLOWED_KEYS = [
+  'mode',
   'background', 'surface', 'surfaceAlt',
   'bgGradient', 'bgGradientAngle',
   'primary', 'primaryMuted', 'accent',
@@ -52,7 +53,10 @@ exports.updateTheme = async (req, res) => {
     for (const [key, val] of Object.entries(req.body)) {
       if (!ALLOWED_KEYS.includes(key)) { invalid.push(key); continue; }
 
-      if (key === 'bgGradient') {
+      if (key === 'mode') {
+        if (val !== 'dark' && val !== 'light') { invalid.push(`${key}:${val}`); continue; }
+        updates[key] = val;
+      } else if (key === 'bgGradient') {
         if (!isValidGradient(val)) { invalid.push(`${key}:${JSON.stringify(val)}`); continue; }
         updates[key] = val;
       } else if (key === 'bgGradientAngle') {

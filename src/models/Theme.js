@@ -5,6 +5,9 @@ const themeSchema = new mongoose.Schema(
     // Only one theme document exists — singleton pattern
     name: { type: String, default: 'default', unique: true },
 
+    // Active mode — drives which preset the client applies
+    mode: { type: String, enum: ['dark', 'light'], default: 'dark' },
+
     // Core backgrounds
     background:  { type: String, default: '#0A0612' },
     surface:     { type: String, default: 'rgba(255,255,255,0.05)' },
