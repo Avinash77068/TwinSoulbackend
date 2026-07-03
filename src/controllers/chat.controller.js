@@ -220,6 +220,24 @@ exports.getSecretMessages = async (req, res) => {
   res.json({ success: true, data: { messages } });
 };
 
+exports.clearMessages = async (req, res) => {
+  if (!requireRelationship(req, res)) return;
+
+  await Message.updateMany(
+    { relationshipId: req.user.relationshipId, isDeleted: false },
+    { isDeleted: true },
+  );
+
+  const io = getIo();
+  if (io) {
+    io.to(`relationship:${req.user.relationshipId}`).emit('chat:cleared', {
+      clearedBy: req.user._id,
+    });
+  }
+
+  res.json({ success: true, message: 'Chat cleared' });
+};
+
 exports.forwardMessage = async (req, res) => {
   if (!requireRelationship(req, res)) return;
   const original = await Message.findOne({ _id: req.params.id, relationshipId: req.user.relationshipId });
