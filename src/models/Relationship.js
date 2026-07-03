@@ -7,7 +7,7 @@ const featuresSchema = new mongoose.Schema({
   memories:      { type: Boolean, default: true },
   music:         { type: Boolean, default: true },
   loveTree:      { type: Boolean, default: true },
-  watchTogether: { type: Boolean, default: true },
+  watchTogether: { type: Boolean, default: false },
 }, { _id: false });
 
 const relationshipSchema = new mongoose.Schema({
