@@ -228,6 +228,12 @@ exports.markRead = async (req, res) => {
     { relationshipId: req.user.relationshipId, senderId: { $ne: req.user._id }, isRead: false },
     { isRead: true }
   );
+
+  const io = getIo();
+  if (io) {
+    io.to(`relationship:${req.user.relationshipId}`).emit('messages:read', { readBy: req.user._id });
+  }
+
   res.json({ success: true, message: 'Messages marked as read' });
 };
 
