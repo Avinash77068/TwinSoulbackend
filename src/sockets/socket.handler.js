@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Presence = require('../models/Presence');
 const sendPushNotification = require('../utils/sendPushNotification');
 const callHandlers = require('./call.socket');
+const { createAndPersistMessage } = require('../controllers/chat.controller');
 
 // Guard: verify client-supplied relationshipId matches the authenticated user's
 const ownsRelationship = (user, relationshipId) =>
@@ -46,10 +47,33 @@ module.exports = (io) => {
 
     // ── Chat ──────────────────────────────────────────────────────────────────
 
-    socket.on('message:send', async (data) => {
-      if (!ownsRelationship(user, data.relationshipId)) return;
+    // Persists immediately (single fast DB write) so the message is never
+    // only-in-memory on the partner's side — the client never hits REST for
+    // this, it just emits and waits for the ack. `bulkSyncMessages` (REST) is
+    // only a fallback for messages queued while the socket was unavailable.
+    socket.on('message:send', async (data, ack) => {
+      if (!ownsRelationship(user, data.relationshipId)) {
+        if (typeof ack === 'function') ack({ success: false, tempId: data?.tempId, error: 'Not authorized' });
+        return;
+      }
       const room = `relationship:${data.relationshipId}`;
-      socket.to(room).emit('message:new', data);
+      let message;
+      try {
+        message = await createAndPersistMessage(user, {
+          content: data.content,
+          type: data.type || 'text',
+          replyTo: data.replyTo,
+          isSecret: data.isSecret,
+        });
+      } catch (err) {
+        console.error('[Socket] message:send persist failed:', err.message);
+        if (typeof ack === 'function') ack({ success: false, tempId: data?.tempId, error: err.message });
+        return;
+      }
+
+      if (typeof ack === 'function') ack({ success: true, tempId: data?.tempId, message });
+      socket.to(room).emit('message:new', message);
+
       try {
         if (user?.partnerId) {
           const partnerPresence = await Presence.findOne({ userId: user.partnerId });
@@ -58,10 +82,10 @@ module.exports = (io) => {
             if (partner?.fcmToken) {
               const senderName = user.nickname || user.name || 'Partner';
               const messagePreview =
-                data.type === 'text'
-                  ? data.content?.slice(0, 100)
-                  : data.type === 'image' ? '📷 Photo'
-                  : data.type === 'voice' ? '🎤 Voice message'
+                message.type === 'text'
+                  ? message.content?.slice(0, 100)
+                  : message.type === 'photo' ? '📷 Photo'
+                  : message.type === 'voice' ? '🎤 Voice message'
                   : '💬 New message';
               await sendPushNotification({
                 fcmToken: partner.fcmToken,
