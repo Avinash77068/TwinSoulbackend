@@ -99,6 +99,7 @@ app.use('/api/presence', require('./src/routes/presence.routes'));
 app.use('/api/youtube', require('./src/routes/youtube.routes'));
 app.use('/api/theme',  require('./src/routes/theme.routes'));
 app.use('/api/calls',  require('./src/routes/call.routes'));
+app.use('/api/feedback', require('./src/routes/feedback.routes'));
 
 app.use(notFound);
 app.use(errorHandler);
