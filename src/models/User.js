@@ -29,6 +29,7 @@ const userSchema = new mongoose.Schema({
   lastSeen: { type: Date, default: Date.now },
   isOnline: { type: Boolean, default: false },
   fcmToken: { type: String, default: '' },
+  bubbleColor: { type: String, default: '#EC4899' },
   messages: [userMessageSchema],
 }, { timestamps: true });
 

@@ -38,11 +38,14 @@ exports.getTheme = async (req, res) => {
   try {
     if (!requireRelationship(req, res)) return;
 
-    // Get or auto-create this couple's theme doc
-    let theme = await Theme.findOne({ relationshipId: req.user.relationshipId });
-    if (!theme) {
-      theme = await Theme.create({ relationshipId: req.user.relationshipId });
-    }
+    // Atomic get-or-create — both partners' apps can call this at the same
+    // moment on first load; a separate findOne-then-create here would race
+    // and throw a duplicate-key error on the unique relationshipId index.
+    const theme = await Theme.findOneAndUpdate(
+      { relationshipId: req.user.relationshipId },
+      { $setOnInsert: { relationshipId: req.user.relationshipId } },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
 
     // Return only the color keys (not _id, __v, timestamps)
     const data = {};
@@ -118,8 +121,11 @@ exports.resetTheme = async (req, res) => {
   try {
     if (!requireRelationship(req, res)) return;
 
-    await Theme.deleteOne({ relationshipId: req.user.relationshipId });
-    const theme = await Theme.create({ relationshipId: req.user.relationshipId });
+    const theme = await Theme.findOneAndReplace(
+      { relationshipId: req.user.relationshipId },
+      { relationshipId: req.user.relationshipId },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
 
     const data = {};
     ALLOWED_KEYS.forEach(k => { if (theme[k] !== undefined) data[k] = theme[k]; });

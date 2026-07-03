@@ -18,6 +18,30 @@ const CHAT_STAGES = [
   { name: 'blooming', min: 500 }, { name: 'golden', min: 1000 }, { name: 'legendary', min: 2000 },
 ];
 
+const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
+// Message bubble color is a per-user preference, shared with the partner in
+// real time so both devices render this person's messages consistently.
+exports.updateBubbleColor = async (req, res) => {
+  if (!requireRelationship(req, res)) return;
+  const color = typeof req.body.color === 'string' ? req.body.color.trim() : '';
+  if (!HEX_COLOR_RE.test(color)) {
+    return res.status(400).json({ success: false, message: 'Invalid color' });
+  }
+
+  await User.findByIdAndUpdate(req.user._id, { bubbleColor: color });
+
+  const io = getIo();
+  if (io) {
+    io.to(`relationship:${req.user.relationshipId}`).emit('bubbleColor:updated', {
+      userId: req.user._id,
+      color,
+    });
+  }
+
+  res.json({ success: true, data: { color } });
+};
+
 const addLoveTreePoints = async (relationshipId, points, field) => {
   const tree = await LoveTree.findOne({ relationshipId });
   if (!tree) return;
@@ -40,7 +64,7 @@ exports.getMessages = async (req, res) => {
   if (before) query.createdAt = { $lt: new Date(before) };
 
   const messages = await Message.find(query)
-    .populate('senderId', 'name nickname profilePhoto')
+    .populate('senderId', 'name nickname profilePhoto bubbleColor')
     .populate('replyTo')
     .sort({ createdAt: -1 })
     .skip((page - 1) * limit)
@@ -93,7 +117,7 @@ const createAndPersistMessage = async (user, { content, type = 'text', mediaUrl 
 
   await addLoveTreePoints(user.relationshipId, 1, 'chatPoints');
   awardXP(user.relationshipId, 2); // +2 XP per message
-  await message.populate('senderId', 'name nickname profilePhoto');
+  await message.populate('senderId', 'name nickname profilePhoto bubbleColor');
   return message;
 };
 exports.createAndPersistMessage = createAndPersistMessage;
@@ -240,14 +264,14 @@ exports.markRead = async (req, res) => {
 exports.getFavoriteMessages = async (req, res) => {
   if (!requireRelationship(req, res)) return;
   const messages = await Message.find({ relationshipId: req.user.relationshipId, isFavorite: true, isDeleted: false })
-    .populate('senderId', 'name nickname profilePhoto').sort({ createdAt: -1 });
+    .populate('senderId', 'name nickname profilePhoto bubbleColor').sort({ createdAt: -1 });
   res.json({ success: true, data: { messages } });
 };
 
 exports.getPinnedMessages = async (req, res) => {
   if (!requireRelationship(req, res)) return;
   const messages = await Message.find({ relationshipId: req.user.relationshipId, isPinned: true, isDeleted: false })
-    .populate('senderId', 'name nickname profilePhoto').sort({ createdAt: -1 });
+    .populate('senderId', 'name nickname profilePhoto bubbleColor').sort({ createdAt: -1 });
   res.json({ success: true, data: { messages } });
 };
 

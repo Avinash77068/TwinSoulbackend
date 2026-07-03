@@ -16,5 +16,6 @@ router.put('/messages/:id/favorite', protect, c.favoriteMessage);
 router.get('/messages/favorites', protect, c.getFavoriteMessages);
 router.post('/messages', protect, upload.single('media'), handleR2Upload, c.sendMessage);
 router.post('/messages/bulk', protect, c.bulkSyncMessages);
+router.put('/bubble-color', protect, c.updateBubbleColor);
 
 module.exports = router;

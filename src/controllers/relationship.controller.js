@@ -235,7 +235,7 @@ exports.getDashboard = async (req, res) => {
 
   const [relationship, partner, tree, level, recentPhotos, recentMessages] = await Promise.all([
     Relationship.findById(req.user.relationshipId),
-    User.findById(req.user.partnerId).select('name nickname profilePhoto isOnline lastSeen'),
+    User.findById(req.user.partnerId).select('name nickname profilePhoto isOnline lastSeen bubbleColor'),
     LoveTree.findOne({ relationshipId: req.user.relationshipId }),
     RelationshipLevel.findOne({ relationshipId: req.user.relationshipId }),
     Photo.find({ relationshipId: req.user.relationshipId, isDeleted: false }).sort({ createdAt: -1 }).limit(5),
