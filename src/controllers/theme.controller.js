@@ -1,6 +1,14 @@
 const Theme = require('../models/Theme');
 const { getIo } = require('../config/socketInstance');
 
+const requireRelationship = (req, res) => {
+  if (!req.user.relationshipId) {
+    res.status(400).json({ success: false, message: 'Not in a relationship' });
+    return false;
+  }
+  return true;
+};
+
 // Allowed CSS color formats for basic validation
 const isValidColor = (val) => {
   if (typeof val !== 'string') return false;
@@ -25,13 +33,15 @@ const ALLOWED_KEYS = [
 const isValidGradient = (val) =>
   Array.isArray(val) && val.length >= 2 && val.every(isValidColor);
 
-// GET /api/theme  — public, no auth required
+// GET /api/theme  — requires auth (theme is per-couple)
 exports.getTheme = async (req, res) => {
   try {
-    // Get or auto-create the singleton theme doc
-    let theme = await Theme.findOne({ name: 'default' });
+    if (!requireRelationship(req, res)) return;
+
+    // Get or auto-create this couple's theme doc
+    let theme = await Theme.findOne({ relationshipId: req.user.relationshipId });
     if (!theme) {
-      theme = await Theme.create({ name: 'default' });
+      theme = await Theme.create({ relationshipId: req.user.relationshipId });
     }
 
     // Return only the color keys (not _id, __v, timestamps)
@@ -47,6 +57,8 @@ exports.getTheme = async (req, res) => {
 // PUT /api/theme  — requires auth (only logged-in users can change theme)
 exports.updateTheme = async (req, res) => {
   try {
+    if (!requireRelationship(req, res)) return;
+
     const updates = {};
     const invalid = [];
 
@@ -78,7 +90,7 @@ exports.updateTheme = async (req, res) => {
     }
 
     const theme = await Theme.findOneAndUpdate(
-      { name: 'default' },
+      { relationshipId: req.user.relationshipId },
       { $set: updates },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
@@ -86,9 +98,9 @@ exports.updateTheme = async (req, res) => {
     const data = {};
     ALLOWED_KEYS.forEach(k => { if (theme[k] !== undefined) data[k] = theme[k]; });
 
-    // Push to ALL connected devices — no restart needed
+    // Push to both partners' devices only — no restart needed
     const io = getIo();
-    if (io) io.emit('theme:updated', data);
+    if (io) io.to(`relationship:${req.user.relationshipId}`).emit('theme:updated', data);
 
     res.json({
       success: true,
@@ -104,14 +116,16 @@ exports.updateTheme = async (req, res) => {
 // DELETE /api/theme/reset  — reset to defaults
 exports.resetTheme = async (req, res) => {
   try {
-    await Theme.deleteOne({ name: 'default' });
-    const theme = await Theme.create({ name: 'default' });
+    if (!requireRelationship(req, res)) return;
+
+    await Theme.deleteOne({ relationshipId: req.user.relationshipId });
+    const theme = await Theme.create({ relationshipId: req.user.relationshipId });
 
     const data = {};
     ALLOWED_KEYS.forEach(k => { if (theme[k] !== undefined) data[k] = theme[k]; });
 
     const io = getIo();
-    if (io) io.emit('theme:updated', data);
+    if (io) io.to(`relationship:${req.user.relationshipId}`).emit('theme:updated', data);
 
     res.json({ success: true, message: 'Theme reset to defaults', data });
   } catch (err) {

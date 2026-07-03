@@ -2,8 +2,8 @@ const mongoose = require('mongoose');
 
 const themeSchema = new mongoose.Schema(
   {
-    // Only one theme document exists — singleton pattern
-    name: { type: String, default: 'default', unique: true },
+    // One theme document per couple — shared between both partners
+    relationshipId: { type: mongoose.Schema.Types.ObjectId, ref: 'Relationship', required: true, unique: true },
 
     // Active mode — drives which preset the client applies
     mode: { type: String, enum: ['dark', 'light'], default: 'dark' },
