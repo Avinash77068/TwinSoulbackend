@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 49 36">
+  <defs>
+    <linearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8A8A93" stop-opacity="0.35"/>
+      <stop offset="0.42" stop-color="#4A0A34"/>
+      <stop offset="1" stop-color="#1E0316"/>
+    </linearGradient>
+    <linearGradient id="strokeGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F1DDE6"/>
+      <stop offset="0.5" stop-color="#FF5FA8"/>
+      <stop offset="1" stop-color="#D6136C"/>
+    </linearGradient>
+  </defs>
+
+  <!-- pouch body with two top tabs -->
+  <path d="M14,10
+           L14,4 Q14,1.6 16.3,1.6 Q18.6,1.6 18.6,4 L18.6,9
+           L30.4,9 L30.4,4 Q30.4,1.6 32.7,1.6 Q35,1.6 35,4 L35,10
+           L41,10.5 Q44,11 44,15 L44,29 Q44,34 39,34 L10,34 Q5,34 5,29 L5,15 Q5,11 8,10.5 Z"
+        fill="url(#fillGrad)" stroke="url(#strokeGrad)" stroke-width="1.8" stroke-linejoin="round"/>
+
+  <!-- seam highlight -->
+  <path d="M6,16.5 L43,16.5" stroke="#FFD7EA" stroke-width="0.8" opacity="0.5"/>
+
+  <!-- heart -->
+  <path d="M24.5,23.6
+           C22.4,20.7 18.5,21.5 18.5,24.5
+           C18.5,26.6 21.5,28.5 24.5,31.4
+           C27.5,28.5 30.5,26.6 30.5,24.5
+           C30.5,21.5 26.6,20.7 24.5,23.6 Z"
+        fill="#FF2E92"/>
+</svg>

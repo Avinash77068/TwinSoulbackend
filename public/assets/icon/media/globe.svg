@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 35 41" width="35" height="41">
+  <defs>
+    <linearGradient id="globeGrad" x1="4" y1="4" x2="31" y2="37" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffa8de"/>
+      <stop offset="35%" stop-color="#ec3fa8"/>
+      <stop offset="70%" stop-color="#a01a78"/>
+      <stop offset="100%" stop-color="#4a0e3f"/>
+    </linearGradient>
+    <filter id="globeShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0.6" dy="0.8" stdDeviation="0.7" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <g filter="url(#globeShadow)">
+    <ellipse cx="17.5" cy="20.5" rx="14.5" ry="16.5" fill="#33062b" stroke="url(#globeGrad)" stroke-width="2.4"/>
+    <line x1="17.5" y1="4.3" x2="17.5" y2="36.7" stroke="url(#globeGrad)" stroke-width="2"/>
+    <line x1="3.3" y1="20.5" x2="31.7" y2="20.5" stroke="url(#globeGrad)" stroke-width="2"/>
+    <path d="M11.5,5 C5,10.5 5,30.5 11.5,36" fill="none" stroke="url(#globeGrad)" stroke-width="2"/>
+    <path d="M23.5,5 C30,10.5 30,30.5 23.5,36" fill="none" stroke="url(#globeGrad)" stroke-width="2"/>
+  </g>
+</svg>

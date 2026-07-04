@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 74">
+  <defs>
+    <linearGradient id="ring" x1="15%" y1="0%" x2="85%" y2="100%">
+      <stop offset="0%" stop-color="#feecfc"/>
+      <stop offset="40%" stop-color="#f28bda"/>
+      <stop offset="70%" stop-color="#dd74c9"/>
+      <stop offset="100%" stop-color="#9a177a"/>
+    </linearGradient>
+    <radialGradient id="fill" cx="35%" cy="20%" r="85%">
+      <stop offset="0%" stop-color="#4d0538"/>
+      <stop offset="60%" stop-color="#2a001f"/>
+      <stop offset="100%" stop-color="#0f010e"/>
+    </radialGradient>
+  </defs>
+  <path d="M50,70 C30,68 10,60 5,45 C15,55 35,66 50,68 C65,66 85,55 95,45 C90,60 70,68 50,70 Z"
+        fill="url(#fill)" stroke="url(#ring)" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M50,70 C35,60 22,35 26,14 C36,29 46,50 50,68 Z"
+        fill="url(#fill)" stroke="url(#ring)" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M50,70 C65,60 78,35 74,14 C64,29 54,50 50,68 Z"
+        fill="url(#fill)" stroke="url(#ring)" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M50,68 C39,54 40,22 50,6 C60,22 61,54 50,68 Z"
+        fill="url(#fill)" stroke="url(#ring)" stroke-width="3.5" stroke-linejoin="round"/>
+</svg>

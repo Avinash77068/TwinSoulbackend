@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 65 78" fill="none">
+  <defs>
+    <linearGradient id="userRing" x1="6" y1="8" x2="59" y2="62" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e78bd6"/>
+      <stop offset="1" stop-color="#8b2fa0"/>
+    </linearGradient>
+    <radialGradient id="userPhotoBg" cx="0.4" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#e8b98f"/>
+      <stop offset="1" stop-color="#6b4a3a"/>
+    </radialGradient>
+    <clipPath id="userClip">
+      <circle cx="32.5" cy="35" r="24.5"/>
+    </clipPath>
+  </defs>
+  <rect x="2" y="2" width="61" height="74" rx="14" fill="#ffffff" stroke="#ececec" stroke-width="1"/>
+  <circle cx="32.5" cy="35" r="26.5" fill="url(#userRing)"/>
+  <g clip-path="url(#userClip)">
+    <rect x="8" y="10" width="49" height="50" fill="url(#userPhotoBg)"/>
+    <ellipse cx="21" cy="52" rx="15" ry="20" fill="#2b2430"/>
+    <ellipse cx="45" cy="54" rx="15" ry="20" fill="#3a2a28"/>
+    <circle cx="20" cy="34" r="9" fill="#c98b66"/>
+    <circle cx="44" cy="36" r="9" fill="#d69a76"/>
+  </g>
+  <circle cx="32.5" cy="35" r="24.5" fill="none" stroke="url(#userRing)" stroke-width="3.5"/>
+</svg>

@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 104">
+  <defs>
+    <linearGradient id="ringBack" x1="15%" y1="0%" x2="85%" y2="100%">
+      <stop offset="0%" stop-color="#f8e4f4"/>
+      <stop offset="45%" stop-color="#d47090"/>
+      <stop offset="100%" stop-color="#742845"/>
+    </linearGradient>
+    <radialGradient id="fillBack" cx="35%" cy="22%" r="82%">
+      <stop offset="0%" stop-color="#420524"/>
+      <stop offset="60%" stop-color="#240118"/>
+      <stop offset="100%" stop-color="#0d0006"/>
+    </radialGradient>
+    <linearGradient id="ringFront" x1="15%" y1="0%" x2="85%" y2="100%">
+      <stop offset="0%" stop-color="#fadbea"/>
+      <stop offset="40%" stop-color="#f76792"/>
+      <stop offset="70%" stop-color="#ec688f"/>
+      <stop offset="100%" stop-color="#9c3a60"/>
+    </linearGradient>
+    <radialGradient id="fillFront" cx="35%" cy="22%" r="82%">
+      <stop offset="0%" stop-color="#4a0a28"/>
+      <stop offset="60%" stop-color="#26031a"/>
+      <stop offset="100%" stop-color="#0e0006"/>
+    </radialGradient>
+  </defs>
+  <path d="M65,66 C46,50 36,34 36,20 C36,8 46,2 56,2 C62,2 65,6 65,12 C65,6 68,2 74,2 C84,2 94,8 94,20 C94,34 84,50 65,66 Z"
+        fill="url(#fillBack)" stroke="url(#ringBack)" stroke-width="4"/>
+  <path d="M46,100 C22,80 8,60 8,42 C8,26 22,18 34,18 C42,18 46,24 46,32 C46,24 50,18 58,18 C70,18 84,26 84,42 C84,60 70,80 46,100 Z"
+        fill="url(#fillFront)" stroke="url(#ringFront)" stroke-width="4.5"/>
+</svg>

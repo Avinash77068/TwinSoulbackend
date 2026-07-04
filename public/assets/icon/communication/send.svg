@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 55 36">
+  <defs>
+    <linearGradient id="sendOutline" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="18%" stop-color="#f2a6e6"/>
+      <stop offset="50%" stop-color="#c81fb0"/>
+      <stop offset="100%" stop-color="#5c0e6a"/>
+    </linearGradient>
+    <linearGradient id="sendTop" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7a1f66"/>
+      <stop offset="55%" stop-color="#3d0e3a"/>
+      <stop offset="100%" stop-color="#1c051d"/>
+    </linearGradient>
+    <linearGradient id="sendFold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2c0a2c"/>
+      <stop offset="100%" stop-color="#0d0210"/>
+    </linearGradient>
+  </defs>
+
+  <!-- top (brighter) face of the paper plane -->
+  <path d="M 53 3 L 2 15 L 32 16 Z" fill="url(#sendTop)"/>
+
+  <!-- folded underside / shadow face -->
+  <path d="M 53 3 L 32 16 L 28 34 L 23 22 Z" fill="url(#sendFold)"/>
+
+  <!-- outer neon outline -->
+  <path d="M 53 3 L 2 15 L 32 16 L 28 34 L 23 22 Z"
+        fill="none" stroke="url(#sendOutline)" stroke-width="2.2"
+        stroke-linejoin="round" stroke-linecap="round"/>
+
+  <!-- crease highlight -->
+  <path d="M 53 3 L 32 16" stroke="url(#sendOutline)" stroke-width="1.4"
+        stroke-linecap="round" opacity="0.85"/>
+
+  <!-- top-edge glossy highlight -->
+  <path d="M 50 5 L 6 14.5" stroke="#ffffff" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
+</svg>

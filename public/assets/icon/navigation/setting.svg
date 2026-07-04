@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 38 41">
+  <defs>
+    <linearGradient id="fillGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4A0A34"/>
+      <stop offset="1" stop-color="#1E0316"/>
+    </linearGradient>
+    <linearGradient id="strokeGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFCCE6"/>
+      <stop offset="0.5" stop-color="#FF5FA8"/>
+      <stop offset="1" stop-color="#C21464"/>
+    </linearGradient>
+  </defs>
+
+  <!-- gear body with 8 teeth and center hole (evenodd punch) -->
+  <path d="M 16.74,9.22 L 16.16,4.25 L 21.84,4.25 L 21.26,9.22 L 25.37,10.93 L 28.49,7.00 L 32.50,11.01 L 28.57,14.13 L 30.28,18.24 L 35.25,17.66 L 35.25,23.34 L 30.28,22.76 L 28.57,26.87 L 32.50,29.99 L 28.49,34.00 L 25.37,30.07 L 21.26,31.78 L 21.84,36.75 L 16.16,36.75 L 16.74,31.78 L 12.63,30.07 L 9.51,34.00 L 5.50,29.99 L 9.43,26.87 L 7.72,22.76 L 2.75,23.34 L 2.75,17.66 L 7.72,18.24 L 9.43,14.13 L 5.50,11.01 L 9.51,7.00 L 12.63,10.93 Z
+           M 25.20,20.50 A 6.2,6.2 0 1 0 12.80,20.50 A 6.2,6.2 0 1 0 25.20,20.50 Z"
+        fill="url(#fillGrad)" stroke="url(#strokeGrad)" stroke-width="1.6"
+        stroke-linejoin="round" fill-rule="evenodd"/>
+</svg>

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 94 102" fill="none">
+  <defs>
+    <radialGradient id="imgBg" cx="0.5" cy="0.5" r="0.65">
+      <stop offset="0" stop-color="#2a0a18"/>
+      <stop offset="1" stop-color="#0a0308"/>
+    </radialGradient>
+    <radialGradient id="imgHeart" cx="0.35" cy="0.3" r="0.8">
+      <stop offset="0" stop-color="#ff9bb8"/>
+      <stop offset="0.55" stop-color="#ff3d78"/>
+      <stop offset="1" stop-color="#d81158"/>
+    </radialGradient>
+    <filter id="imgGlow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="2.2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <circle cx="47" cy="53" r="49" fill="url(#imgBg)"/>
+
+  <g stroke="#ff3d78" stroke-width="1" opacity="0.85">
+    <line x1="47" y1="14" x2="41" y2="4"/>
+    <line x1="80" y1="34" x2="88" y2="30"/>
+    <line x1="80" y1="72" x2="87" y2="78"/>
+    <line x1="16" y1="72" x2="9" y2="78"/>
+  </g>
+  <g fill="#ff3d78">
+    <circle cx="41" cy="4" r="2.2"/>
+    <circle cx="88" cy="30" r="2.2"/>
+    <circle cx="87" cy="78" r="2.2"/>
+    <circle cx="9" cy="78" r="2.2"/>
+  </g>
+
+  <circle cx="47" cy="53" r="30" fill="none" stroke="#ff3d78" stroke-width="2" filter="url(#imgGlow)"/>
+
+  <path fill="url(#imgHeart)" filter="url(#imgGlow)" d="M47 68 C36 58 26 50 26 39 C26 32 31 27 38 27 C42 27 45.5 29 47 32.5 C48.5 29 52 27 56 27 C63 27 68 32 68 39 C68 50 58 58 47 68 Z"/>
+  <ellipse cx="39" cy="38" rx="4" ry="2.5" fill="#ffffff" opacity="0.5"/>
+</svg>

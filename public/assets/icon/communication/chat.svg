@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 53 41">
+  <defs>
+    <linearGradient id="ringC" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="20%" stop-color="#ff9fe0"/>
+      <stop offset="50%" stop-color="#e619a0"/>
+      <stop offset="78%" stop-color="#af0f8d"/>
+      <stop offset="100%" stop-color="#5c0a5c"/>
+    </linearGradient>
+    <linearGradient id="fillC" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4a1140"/>
+      <stop offset="55%" stop-color="#230820"/>
+      <stop offset="100%" stop-color="#0f030d"/>
+    </linearGradient>
+    <linearGradient id="glyphC" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="55%" stop-color="#ffcdea"/>
+      <stop offset="100%" stop-color="#ff7ac8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- second bubble peeking behind -->
+  <rect x="42" y="10" width="8" height="21" rx="4" fill="url(#fillC)" stroke="url(#ringC)" stroke-width="1.8"/>
+
+  <!-- tail -->
+  <path d="M 10 29 L 7.5 37.5 L 18 30.5 Z" fill="url(#fillC)" stroke="url(#ringC)" stroke-width="1.8" stroke-linejoin="round"/>
+
+  <!-- main bubble -->
+  <rect x="2.5" y="3" width="39" height="28" rx="8" fill="url(#fillC)" stroke="url(#ringC)" stroke-width="2.4"/>
+
+  <!-- smiley -->
+  <circle cx="16" cy="14.5" r="1.6" fill="url(#glyphC)"/>
+  <circle cx="28" cy="14.5" r="1.6" fill="url(#glyphC)"/>
+  <path d="M 14 18 L 22 24.5 L 30 18" fill="none" stroke="url(#glyphC)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

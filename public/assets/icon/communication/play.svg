@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 43">
+  <defs>
+    <linearGradient id="ringPl" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="20%" stop-color="#ff9fe0"/>
+      <stop offset="50%" stop-color="#e619a0"/>
+      <stop offset="78%" stop-color="#af0f8d"/>
+      <stop offset="100%" stop-color="#5c0a5c"/>
+    </linearGradient>
+    <radialGradient id="fillPl" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#4a1140"/>
+      <stop offset="55%" stop-color="#230820"/>
+      <stop offset="100%" stop-color="#0f030d"/>
+    </radialGradient>
+    <linearGradient id="glyphPl" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="55%" stop-color="#ffcdea"/>
+      <stop offset="100%" stop-color="#ff7ac8"/>
+    </linearGradient>
+    <filter id="shadowPl" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1.2"/>
+    </filter>
+  </defs>
+
+  <ellipse cx="24.8" cy="22.3" rx="18.2" ry="18.2" fill="#000000" opacity="0.35" filter="url(#shadowPl)"/>
+
+  <circle cx="24" cy="21.5" r="18.5" fill="url(#ringPl)"/>
+  <circle cx="24" cy="21.5" r="16" fill="url(#fillPl)"/>
+
+  <rect x="18.5" y="13.5" width="3.6" height="16" rx="1.5" fill="url(#glyphPl)"/>
+  <rect x="25.9" y="13.5" width="3.6" height="16" rx="1.5" fill="url(#glyphPl)"/>
+</svg>

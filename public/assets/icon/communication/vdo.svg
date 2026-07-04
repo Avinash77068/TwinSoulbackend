@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 49 36">
+  <defs>
+    <linearGradient id="ringVd" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="20%" stop-color="#ff9fe0"/>
+      <stop offset="50%" stop-color="#e619a0"/>
+      <stop offset="78%" stop-color="#af0f8d"/>
+      <stop offset="100%" stop-color="#5c0a5c"/>
+    </linearGradient>
+    <linearGradient id="fillVd" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4a1140"/>
+      <stop offset="55%" stop-color="#230820"/>
+      <stop offset="100%" stop-color="#0f030d"/>
+    </linearGradient>
+    <linearGradient id="glyphVd" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="55%" stop-color="#ffcdea"/>
+      <stop offset="100%" stop-color="#ff7ac8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- connector between body and lens -->
+  <rect x="28.5" y="13.5" width="4" height="9" fill="url(#fillVd)" stroke="url(#ringVd)" stroke-width="1.2"/>
+
+  <!-- camera lens -->
+  <path d="M 32 11 L 44.5 4.5 L 44.5 31.5 L 32 25 Z"
+        fill="url(#fillVd)" stroke="url(#ringVd)" stroke-width="2" stroke-linejoin="round"/>
+
+  <!-- speech-bubble tail -->
+  <path d="M 8 26.5 L 6 34 L 15 27 Z" fill="url(#fillVd)" stroke="url(#ringVd)" stroke-width="1.6" stroke-linejoin="round"/>
+
+  <!-- camera body -->
+  <rect x="2.2" y="2.5" width="27" height="24" rx="6.5" fill="url(#fillVd)" stroke="url(#ringVd)" stroke-width="2.2"/>
+
+  <!-- heart glyph -->
+  <path d="M 15.7 22.4 C 10.6 18.3 7.3 15.0 7.3 11.6 C 7.3 8.5 9.3 7.5 11.5 7.5 C 13.2 7.5 14.9 8.6 15.7 10.7 C 16.5 8.6 18.2 7.5 19.9 7.5 C 22.1 7.5 24.1 8.5 24.1 11.6 C 24.1 15.0 20.8 18.3 15.7 22.4 Z"
+        fill="url(#glyphVd)" transform="translate(1,-1)"/>
+</svg>

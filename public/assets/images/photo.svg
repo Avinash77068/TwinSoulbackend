@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 47" fill="none">
+  <defs>
+    <linearGradient id="photoBg" x1="2" y1="1" x2="42" y2="46" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2b0a1f"/>
+      <stop offset="1" stop-color="#0a0308"/>
+    </linearGradient>
+    <linearGradient id="photoStroke" x1="9" y1="10" x2="35" y2="36" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff6fa8"/>
+      <stop offset="1" stop-color="#c5308c"/>
+    </linearGradient>
+    <clipPath id="photoClip">
+      <rect x="10" y="12" width="24" height="20" rx="3.5"/>
+    </clipPath>
+  </defs>
+  <rect x="1.5" y="1" width="41" height="45" rx="9" fill="url(#photoBg)"/>
+  <rect x="1.5" y="1" width="41" height="45" rx="9" fill="none" stroke="url(#photoStroke)" stroke-width="1" opacity="0.5"/>
+  <rect x="10" y="12" width="24" height="20" rx="3.5" fill="none" stroke="url(#photoStroke)" stroke-width="2.2"/>
+  <g clip-path="url(#photoClip)">
+    <circle cx="17" cy="19" r="2.4" fill="url(#photoStroke)"/>
+    <path d="M9 32 L18 22 L23 27 L29 18 L36 32 Z" fill="url(#photoStroke)"/>
+  </g>
+</svg>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 97 68" fill="none">
+  <defs>
+    <linearGradient id="musicGrad" x1="15" y1="10" x2="85" y2="62" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#a78bfa"/>
+      <stop offset="1" stop-color="#6d28d9"/>
+    </linearGradient>
+  </defs>
+  <rect x="36" y="15" width="4.5" height="39" fill="url(#musicGrad)"/>
+  <rect x="68" y="8" width="4.5" height="39" fill="url(#musicGrad)"/>
+  <polygon points="36,15 40.5,15 72.5,8 68,8" fill="url(#musicGrad)"/>
+  <ellipse cx="28" cy="55" rx="15" ry="11" transform="rotate(-16 28 55)" fill="url(#musicGrad)"/>
+  <ellipse cx="60" cy="48" rx="15" ry="11" transform="rotate(-16 60 48)" fill="url(#musicGrad)"/>
+  <ellipse cx="23" cy="50" rx="4" ry="2.4" fill="#ffffff" opacity="0.35"/>
+  <ellipse cx="55" cy="43" rx="4" ry="2.4" fill="#ffffff" opacity="0.35"/>
+</svg>

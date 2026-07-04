@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 38" fill="none">
+  <defs>
+    <linearGradient id="msgBg" x1="2" y1="1" x2="42" y2="37" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#2b0a1f"/>
+      <stop offset="1" stop-color="#0a0308"/>
+    </linearGradient>
+    <linearGradient id="msgStroke" x1="7" y1="6" x2="37" y2="32" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff6fa8"/>
+      <stop offset="1" stop-color="#c5308c"/>
+    </linearGradient>
+  </defs>
+  <rect x="1.5" y="1" width="41" height="36" rx="9" fill="url(#msgBg)"/>
+  <rect x="1.5" y="1" width="41" height="36" rx="9" fill="none" stroke="url(#msgStroke)" stroke-width="1" opacity="0.5"/>
+  <path d="M22 8 C13.5 8 7 13.6 7 20.5 C7 24 8.7 27.1 11.4 29.3 C11.1 31 10.2 32.6 8.8 33.8 C11.3 33.8 13.6 32.9 15.4 31.4 C17.4 32.2 19.6 32.7 22 32.7 C30.5 32.7 37 27.1 37 20.5 C37 13.6 30.5 8 22 8 Z"
+        fill="none" stroke="url(#msgStroke)" stroke-width="2.3" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="15.5" cy="20.5" r="1.9" fill="url(#msgStroke)"/>
+  <circle cx="22" cy="20.5" r="1.9" fill="url(#msgStroke)"/>
+  <circle cx="28.5" cy="20.5" r="1.9" fill="url(#msgStroke)"/>
+</svg>

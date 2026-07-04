@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 34 44">
+  <defs>
+    <linearGradient id="ringL" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="20%" stop-color="#ff9fe0"/>
+      <stop offset="50%" stop-color="#e619a0"/>
+      <stop offset="78%" stop-color="#af0f8d"/>
+      <stop offset="100%" stop-color="#5c0a5c"/>
+    </linearGradient>
+    <linearGradient id="fillL" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4a1140"/>
+      <stop offset="55%" stop-color="#230820"/>
+      <stop offset="100%" stop-color="#0f030d"/>
+    </linearGradient>
+    <linearGradient id="glyphL" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="55%" stop-color="#ffcdea"/>
+      <stop offset="100%" stop-color="#ff7ac8"/>
+    </linearGradient>
+  </defs>
+
+  <!-- shackle -->
+  <path d="M 8.5 20 L 8.5 12.5 C 8.5 5.6 12.3 2 17 2 C 21.7 2 25.5 5.6 25.5 12.5 L 25.5 20"
+        fill="none" stroke="url(#ringL)" stroke-width="3.4" stroke-linecap="round"/>
+
+  <!-- body -->
+  <rect x="3.5" y="17.5" width="27" height="24.5" rx="4.5" fill="url(#fillL)" stroke="url(#ringL)" stroke-width="2.4"/>
+
+  <!-- keyhole -->
+  <circle cx="17" cy="27.5" r="3.1" fill="url(#glyphL)"/>
+  <path d="M 15.2 29.5 L 18.8 29.5 L 20 36.5 L 14 36.5 Z" fill="url(#glyphL)"/>
+</svg>

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 46 40" width="46" height="40">
+  <defs>
+    <linearGradient id="vdoGrad" x1="4" y1="3" x2="42" y2="37" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffa8de"/>
+      <stop offset="35%" stop-color="#ec3fa8"/>
+      <stop offset="70%" stop-color="#a01a78"/>
+      <stop offset="100%" stop-color="#4a0e3f"/>
+    </linearGradient>
+    <filter id="vdoShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0.6" dy="0.8" stdDeviation="0.7" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <g filter="url(#vdoShadow)">
+    <rect x="3.2" y="3.2" width="39.6" height="33.6" rx="7" fill="#33062b" stroke="url(#vdoGrad)" stroke-width="2.4"/>
+    <line x1="3.2" y1="11" x2="42.8" y2="11" stroke="url(#vdoGrad)" stroke-width="1.7"/>
+    <g stroke="url(#vdoGrad)" stroke-width="1.4" stroke-linecap="round">
+      <line x1="10" y1="4.5" x2="7.5" y2="9.5"/>
+      <line x1="17" y1="4.5" x2="14.5" y2="9.5"/>
+      <line x1="24" y1="4.5" x2="21.5" y2="9.5"/>
+      <line x1="31" y1="4.5" x2="28.5" y2="9.5"/>
+      <line x1="38" y1="4.5" x2="35.5" y2="9.5"/>
+    </g>
+    <path d="M19,17 L19,29 L31,23 Z" fill="url(#vdoGrad)"/>
+    <g stroke="url(#vdoGrad)" stroke-width="1.6" fill="none" stroke-linecap="round">
+      <path d="M8,15.5 L8,18.5 M8,15.5 L11,15.5"/>
+      <path d="M38,15.5 L38,18.5 M38,15.5 L35,15.5"/>
+      <path d="M8,30 L8,27 M8,30 L11,30"/>
+      <path d="M38,30 L38,27 M38,30 L35,30"/>
+    </g>
+  </g>
+</svg>

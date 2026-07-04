@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 119">
+  <defs>
+    <linearGradient id="potRing" x1="10%" y1="0%" x2="90%" y2="100%">
+      <stop offset="0%" stop-color="#fee8fc"/>
+      <stop offset="40%" stop-color="#f6a6e4"/>
+      <stop offset="70%" stop-color="#e590ce"/>
+      <stop offset="100%" stop-color="#c94a9a"/>
+    </linearGradient>
+    <linearGradient id="potFill" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#5c0d47"/>
+      <stop offset="60%" stop-color="#3c0230"/>
+      <stop offset="100%" stop-color="#7a0f5c"/>
+    </linearGradient>
+    <linearGradient id="leafRing" x1="20%" y1="0%" x2="80%" y2="100%">
+      <stop offset="0%" stop-color="#fee8fc"/>
+      <stop offset="45%" stop-color="#e78ad0"/>
+      <stop offset="100%" stop-color="#a83f8c"/>
+    </linearGradient>
+    <radialGradient id="leafFill" cx="35%" cy="25%" r="80%">
+      <stop offset="0%" stop-color="#4a0f3e"/>
+      <stop offset="60%" stop-color="#280121"/>
+      <stop offset="100%" stop-color="#130010"/>
+    </radialGradient>
+  </defs>
+
+  <!-- stem -->
+  <path d="M50,78 C50,68 50,62 50,54" fill="none" stroke="#3a0a2e" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- leaves -->
+  <ellipse cx="35" cy="52" rx="28" ry="13" transform="rotate(-118 35 52)"
+           fill="url(#leafFill)" stroke="url(#leafRing)" stroke-width="4.5"/>
+  <ellipse cx="64.5" cy="57" rx="22" ry="11" transform="rotate(-59 64.5 57)"
+           fill="url(#leafFill)" stroke="url(#leafRing)" stroke-width="4.5"/>
+
+  <!-- pot -->
+  <path d="M27,78 L73,78 L64,110 Q64,113 61,113 L39,113 Q36,113 36,110 Z"
+        fill="url(#potFill)" stroke="url(#potRing)" stroke-width="4.5" stroke-linejoin="round"/>
+  <ellipse cx="50" cy="78" rx="23" ry="6" fill="url(#potRing)"/>
+  <ellipse cx="50" cy="78" rx="18" ry="4" fill="#3c0230"/>
+  <rect x="32" y="90" width="36" height="3.5" fill="#2c0223" opacity="0.7"/>
+</svg>

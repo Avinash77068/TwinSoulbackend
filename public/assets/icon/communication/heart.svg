@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 43 46">
+  <defs>
+    <linearGradient id="ringH" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="20%" stop-color="#ff9fe0"/>
+      <stop offset="50%" stop-color="#e619a0"/>
+      <stop offset="78%" stop-color="#af0f8d"/>
+      <stop offset="100%" stop-color="#5c0a5c"/>
+    </linearGradient>
+    <radialGradient id="fillH" cx="35%" cy="25%" r="80%">
+      <stop offset="0%" stop-color="#4a1140"/>
+      <stop offset="55%" stop-color="#230820"/>
+      <stop offset="100%" stop-color="#0f030d"/>
+    </radialGradient>
+    <linearGradient id="glyphH" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="55%" stop-color="#ffcdea"/>
+      <stop offset="100%" stop-color="#ff7ac8"/>
+    </linearGradient>
+    <filter id="shadowH" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="1"/>
+    </filter>
+  </defs>
+
+  <path d="M 22.3 46.65 C 9.4 34.8 0.8 25.3 0.8 15.1 C 0.8 7.9 5.96 3 11.55 3 C 15.85 3 20.15 6.4 22.3 12.7 C 24.45 6.4 28.75 3 33.05 3 C 38.64 3 43.8 7.9 43.8 15.1 C 43.8 25.3 35.2 34.8 22.3 46.65 Z"
+        fill="#000000" opacity="0.3" filter="url(#shadowH)" transform="translate(-0.6,-0.6)"/>
+
+  <path d="M 21.5 45.65 C 8.6 33.8 0 24.3 0 14.1 C 0 6.9 5.16 2 10.75 2 C 15.05 2 19.35 5.4 21.5 11.7 C 23.65 5.4 27.95 2 32.25 2 C 37.84 2 43 6.9 43 14.1 C 43 24.3 34.4 33.8 21.5 45.65 Z"
+        fill="url(#ringH)"/>
+
+  <path d="M 21.5 42.0 C 11.3 31.72 4.5 23.5 4.5 15.28 C 4.5 9.11 8.58 5 13.0 5 C 16.4 5 19.8 7.88 21.5 13.22 C 23.2 7.88 26.6 5 30.0 5 C 34.42 5 38.5 9.11 38.5 15.28 C 38.5 23.5 31.7 31.72 21.5 42.0 Z"
+        fill="url(#fillH)"/>
+
+  <g fill="none" stroke="url(#glyphH)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="21.5" y1="33" x2="21.5" y2="22.5"/>
+    <path d="M 21.5 25.5 C 15.5 24.5 12.5 19 13.3 13"/>
+    <path d="M 21.5 22 C 27 19.3 30 14.2 29 9.3"/>
+  </g>
+</svg>

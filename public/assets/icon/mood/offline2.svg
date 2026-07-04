@@ -1,0 +1,23 @@
+<svg viewBox="0 0 100 103" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="face" cx="35%" cy="28%" r="80%">
+      <stop offset="0%" stop-color="#3d1a58"/>
+      <stop offset="55%" stop-color="#230f38"/>
+      <stop offset="100%" stop-color="#110620"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="15%" y1="0%" x2="85%" y2="100%">
+      <stop offset="0%" stop-color="#f3e9fc"/>
+      <stop offset="45%" stop-color="#c7a0ea"/>
+      <stop offset="100%" stop-color="#8f5cc4"/>
+    </linearGradient>
+    <radialGradient id="dot" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#d9c2f0"/>
+    </radialGradient>
+  </defs>
+
+  <circle cx="50" cy="51.5" r="48" fill="#2a1440"/>
+  <circle cx="50" cy="51.5" r="45" fill="url(#ring)"/>
+  <circle cx="50" cy="51.5" r="37" fill="url(#face)"/>
+  <circle cx="50" cy="51.5" r="13" fill="url(#dot)"/>
+</svg>

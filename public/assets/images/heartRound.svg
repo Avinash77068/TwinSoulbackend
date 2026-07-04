@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 344 338" fill="none">
+  <defs>
+    <linearGradient id="goldRing" x1="60" y1="10" x2="290" y2="330" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#fbe7a1"/>
+      <stop offset="0.35" stop-color="#e2ac4e"/>
+      <stop offset="0.65" stop-color="#b9782a"/>
+      <stop offset="1" stop-color="#7c4a17"/>
+    </linearGradient>
+    <radialGradient id="innerBg" cx="0.42" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#4a1226"/>
+      <stop offset="0.55" stop-color="#260a17"/>
+      <stop offset="1" stop-color="#0c0409"/>
+    </radialGradient>
+    <radialGradient id="heartGlow" cx="0.5" cy="0.45" r="0.6">
+      <stop offset="0" stop-color="#ff6f91" stop-opacity="0.55"/>
+      <stop offset="1" stop-color="#ff6f91" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="heartOuter" x1="172" y1="100" x2="172" y2="232" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff8aa1"/>
+      <stop offset="0.5" stop-color="#f3527d"/>
+      <stop offset="1" stop-color="#c81856"/>
+    </linearGradient>
+    <linearGradient id="heartInner" x1="172" y1="140" x2="172" y2="205" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffe9c9"/>
+      <stop offset="1" stop-color="#ffb0a0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- scalloped gold badge ring -->
+  <path fill="url(#goldRing)" d="M 172.0,-1.0 L 182.7,6.3 L 191.4,21.3 L 199.7,29.7 L 210.6,25.1 L 224.4,14.7 L 237.1,11.9 L 244.1,22.8 L 246.5,40.0 L 250.9,50.9 L 262.7,50.8 L 279.5,46.5 L 292.2,48.8 L 294.5,61.5 L 290.2,78.3 L 290.1,90.1 L 301.0,94.5 L 318.2,96.9 L 329.1,103.9 L 326.3,116.6 L 315.9,130.4 L 311.3,141.3 L 319.7,149.6 L 334.7,158.3 L 342.0,169.0 L 334.7,179.7 L 319.7,188.4 L 311.3,196.7 L 315.9,207.6 L 326.3,221.4 L 329.1,234.1 L 318.2,241.1 L 301.0,243.5 L 290.1,247.9 L 290.2,259.7 L 294.5,276.5 L 292.2,289.2 L 279.5,291.5 L 262.7,287.2 L 250.9,287.1 L 246.5,298.0 L 244.1,315.2 L 237.1,326.1 L 224.4,323.3 L 210.6,312.9 L 199.7,308.3 L 191.4,316.7 L 182.7,331.7 L 172.0,339.0 L 161.3,331.7 L 152.6,316.7 L 144.3,308.3 L 133.4,312.9 L 119.6,323.3 L 106.9,326.1 L 99.9,315.2 L 97.5,298.0 L 93.1,287.1 L 81.3,287.2 L 64.5,291.5 L 51.8,289.2 L 49.5,276.5 L 53.8,259.7 L 53.9,247.9 L 43.0,243.5 L 25.8,241.1 L 14.9,234.1 L 17.7,221.4 L 28.1,207.6 L 32.7,196.7 L 24.3,188.4 L 9.3,179.7 L 2.0,169.0 L 9.3,158.3 L 24.3,149.6 L 32.7,141.3 L 28.1,130.4 L 17.7,116.6 L 14.9,103.9 L 25.8,96.9 L 43.0,94.5 L 53.9,90.1 L 53.8,78.3 L 49.5,61.5 L 51.8,48.8 L 64.5,46.5 L 81.3,50.8 L 93.1,50.9 L 97.5,40.0 L 99.9,22.8 L 106.9,11.9 L 119.6,14.7 L 133.4,25.1 L 144.3,29.7 L 152.6,21.3 L 161.3,6.3 Z"/>
+
+  <!-- inner dark disc -->
+  <circle cx="172" cy="169" r="128" fill="url(#innerBg)"/>
+  <circle cx="172" cy="169" r="128" fill="none" stroke="#c98a3c" stroke-width="3" opacity="0.6"/>
+
+  <!-- sparkles -->
+  <g fill="#e8703a">
+    <path d="M 112,78 L 116,90 L 128,94 L 116,98 L 112,110 L 108,98 L 96,94 L 108,90 Z"/>
+    <path d="M 108,258 L 111,267 L 120,270 L 111,273 L 108,282 L 105,273 L 96,270 L 105,267 Z"/>
+    <path d="M 233,258 L 236,266 L 244,269 L 236,272 L 233,280 L 230,272 L 222,269 L 230,266 Z"/>
+  </g>
+  <g fill="#e0508a">
+    <path d="M 234,72 L 237,80 L 245,83 L 237,86 L 234,94 L 231,86 L 223,83 L 231,80 Z"/>
+  </g>
+  <g fill="#e8703a" opacity="0.85">
+    <circle cx="253" cy="112" r="4.5"/>
+    <circle cx="264" cy="140" r="5.5"/>
+    <circle cx="100" cy="185" r="4.5"/>
+  </g>
+  <circle cx="238" cy="205" r="4" fill="#e0508a" opacity="0.8"/>
+
+  <!-- heart glow -->
+  <circle cx="172" cy="170" r="70" fill="url(#heartGlow)"/>
+
+  <!-- outer heart -->
+  <path fill="url(#heartOuter)" d="M 172,231 C 138,199 98,173 98,143 C 98,117 119,101 145,101 C 158,101 168,109 172,120 C 176,109 186,101 199,101 C 225,101 246,117 246,143 C 246,173 206,199 172,231 Z"/>
+
+  <!-- inner accent heart -->
+  <path fill="url(#heartInner)" d="M 172,203 C 152,185 133,170 133,152 C 133,138 144,129 158,129 C 165,129 170,133 172,139 C 174,133 179,129 186,129 C 200,129 211,138 211,152 C 211,170 192,185 172,203 Z"/>
+</svg>

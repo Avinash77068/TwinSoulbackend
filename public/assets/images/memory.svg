@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 101 82" fill="none">
+  <defs>
+    <linearGradient id="memBg" x1="6" y1="4" x2="95" y2="78" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#c9a6f2"/>
+      <stop offset="0.45" stop-color="#9b5fd6"/>
+      <stop offset="1" stop-color="#5a2a97"/>
+    </linearGradient>
+    <linearGradient id="memCardBg" x1="20" y1="18" x2="82" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#3a1a5c"/>
+      <stop offset="1" stop-color="#180a2c"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="3" width="93" height="76" rx="20" fill="url(#memBg)"/>
+  <rect x="4" y="3" width="93" height="76" rx="20" fill="none" stroke="#ffffff" stroke-opacity="0.25" stroke-width="1.5"/>
+  <rect x="21" y="19" width="59" height="45" rx="8" fill="url(#memCardBg)" stroke="#e8d6ff" stroke-width="2"/>
+  <circle cx="35" cy="32" r="4.2" fill="#e8d6ff"/>
+  <path d="M25 58 L42 40 L52 50 L62 36 L76 58 Z" fill="#e8d6ff"/>
+</svg>
