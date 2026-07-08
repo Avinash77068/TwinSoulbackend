@@ -308,29 +308,47 @@ exports.streamSong = async (req, res) => {
   const cdnUrl = details.data.downloadUrl;
 
   try {
+    const range = req.headers.range;
     const response = await axios.get(cdnUrl, {
       responseType: 'stream',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         'Referer': 'https://www.jiosaavn.com/',
         'Accept': 'audio/webm,audio/ogg,audio/wav,audio/*;q=0.9,*/*;q=0.8',
+        ...(range ? { Range: range } : {}),
       },
       timeout: 10000,
+      validateStatus: status => status === 200 || status === 206,
     });
 
-    res.setHeader('Content-Type', response.headers['content-type'] || 'audio/mpeg');
+    const contentType = response.headers['content-type'] || 'audio/mp4';
+    if (!contentType.startsWith('audio/') && !contentType.startsWith('video/mp4')) {
+      console.error(`[Music] streamSong bad content-type | ${contentType}`);
+      return res.status(502).json({ success: false, message: 'Upstream did not return audio' });
+    }
+
+    res.status(response.status);
+    res.setHeader('Content-Type', contentType);
     res.setHeader('Accept-Ranges', 'bytes');
     if (response.headers['content-length']) {
       res.setHeader('Content-Length', response.headers['content-length']);
+    }
+    if (response.headers['content-range']) {
+      res.setHeader('Content-Range', response.headers['content-range']);
     }
 
     response.data.pipe(res);
 
     response.data.on('error', (err) => {
       console.error(`[Music] streamSong pipe error | ${err.message}`);
+      res.destroy(err);
     });
   } catch (err) {
     console.error(`[Music] streamSong fetch error | ${err.message}`);
-    res.status(502).json({ success: false, message: 'Failed to fetch audio stream' });
+    if (!res.headersSent) {
+      res.status(502).json({ success: false, message: 'Failed to fetch audio stream' });
+    } else {
+      res.destroy(err);
+    }
   }
 };
