@@ -11,29 +11,42 @@ const sendPushNotification = async ({ fcmToken, title, body, data = {} }) => {
 
   const isCall = data.type === 'incoming_call';
 
-  try {
-    await getMessaging().send({
-      token: fcmToken,
-      notification: { title, body },
-      data: stringData,
-      android: {
-        priority: 'high',
-        notification: {
-          sound: isCall ? 'ringtone' : 'default',
-          channelId: isCall ? 'twinsoul_calls' : 'twinsoul_default',
-        },
-      },
-      apns: {
-        payload: {
-          aps: {
-            sound: isCall ? 'ringtone.caf' : 'default',
-            badge: 1,
-            'content-available': 1,
+  // Incoming calls MUST be data-only: a `notification` block makes Android
+  // render a plain system notification itself and skip the app's background
+  // handler entirely — the native CallStyle (Answer/Decline) notification
+  // would never be shown. Data-only + high priority wakes the handler even
+  // with the app killed.
+  const message = isCall
+    ? {
+        token: fcmToken,
+        data: stringData,
+        android: { priority: 'high' },
+        apns: {
+          payload: {
+            aps: { sound: 'ringtone.caf', 'content-available': 1 },
           },
         },
-      },
-    });
-    
+      }
+    : {
+        token: fcmToken,
+        notification: { title, body },
+        data: stringData,
+        android: {
+          priority: 'high',
+          notification: {
+            sound: 'default',
+            channelId: 'twinsoul_default',
+          },
+        },
+        apns: {
+          payload: {
+            aps: { sound: 'default', badge: 1, 'content-available': 1 },
+          },
+        },
+      };
+
+  try {
+    await getMessaging().send(message);
   } catch (err) {
     if (
       err.code === 'messaging/invalid-registration-token' ||
