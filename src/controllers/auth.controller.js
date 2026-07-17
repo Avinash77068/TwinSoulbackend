@@ -6,6 +6,7 @@ const RelationshipLevel = require('../models/RelationshipLevel');
 const TimelineEvent = require('../models/TimelineEvent');
 const Presence = require('../models/Presence');
 const PendingRegistration = require('../models/PendingRegistration');
+const mailer = require('../config/mailer');
 
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
@@ -46,7 +47,13 @@ exports.register = async (req, res) => {
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
 
-  // TODO: send OTP to email via an email service
+  // Send OTP to email via configured email service (fallback to Ethereal in dev)
+  try {
+    await mailer.sendOtpEmail(email, otp, name);
+  } catch (err) {
+    console.error('Failed to send OTP email:', err);
+  }
+
   res.status(200).json({
     success: true,
     message: 'OTP sent to your email',
