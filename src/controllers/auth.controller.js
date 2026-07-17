@@ -47,11 +47,21 @@ exports.register = async (req, res) => {
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
 
-  res.status(200).json({
-    success: true,
-    message: 'OTP generated successfully',
-    otp, // visible in dev — remove in production
-  });
+  try {
+    await mailer.sendOtpEmail(email, otp, name);
+
+    res.status(200).json({
+      success: true,
+      message: 'OTP sent to your email',
+      otp, // visible in dev — remove in production
+    });
+  } catch (err) {
+    console.error('Failed to send OTP email:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to send OTP email. Please try again later.',
+    });
+  }
 };
 
 // Step 2: verify OTP — still no user created
