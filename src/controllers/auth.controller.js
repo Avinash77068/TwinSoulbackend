@@ -47,15 +47,9 @@ exports.register = async (req, res) => {
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
 
-  // Send OTP to email via configured email service (fallback to Ethereal in dev)
-  // Do not block registration on email delivery.
-  mailer.sendOtpEmail(email, otp, name).catch((err) => {
-    console.error('Failed to send OTP email:', err);
-  });
-
   res.status(200).json({
     success: true,
-    message: 'OTP sent to your email',
+    message: 'OTP generated successfully',
     otp, // visible in dev — remove in production
   });
 };
