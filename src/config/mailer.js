@@ -33,13 +33,21 @@ async function sendMail(mailOptions) {
   return transporter.sendMail(mailOptions);
 }
 
+const withTimeout = (promise, timeoutMs = 10000) =>
+  Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(`Mail send timed out after ${timeoutMs}ms`)), timeoutMs);
+    }),
+  ]);
+
 const { otpTemplate } = require('./emailTemplates');
 
 module.exports = {
   sendOtpEmail: async (to, otp, name) => {
     const from = process.env.EMAIL_FROM || 'TwinSoul <no-reply@twinsoul.app>';
     const html = otpTemplate(otp, name);
-    const info = await sendMail({ from, to, subject: 'Your TwinSoul OTP', html });
+    const info = await withTimeout(sendMail({ from, to, subject: 'Your TwinSoul OTP', html }));
     // If using Ethereal, print preview URL
     if (nodemailer.getTestMessageUrl && info) {
       const preview = nodemailer.getTestMessageUrl(info);

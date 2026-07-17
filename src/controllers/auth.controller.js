@@ -48,11 +48,10 @@ exports.register = async (req, res) => {
   );
 
   // Send OTP to email via configured email service (fallback to Ethereal in dev)
-  try {
-    await mailer.sendOtpEmail(email, otp, name);
-  } catch (err) {
+  // Do not block registration on email delivery.
+  mailer.sendOtpEmail(email, otp, name).catch((err) => {
     console.error('Failed to send OTP email:', err);
-  }
+  });
 
   res.status(200).json({
     success: true,
