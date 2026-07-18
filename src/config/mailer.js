@@ -68,12 +68,18 @@ module.exports = {
   sendOtpEmail: async (to, otp, name) => {
     const from = process.env.EMAIL_FROM || 'TwinSoul <no-reply@twinsoul.app>';
     const html = otpTemplate(otp, name);
-    const info = await withTimeout(sendMail({ from, to, subject: 'Your TwinSoul OTP', html }));
-    // If using Ethereal, print preview URL
-    if (nodemailer.getTestMessageUrl && info) {
-      const preview = nodemailer.getTestMessageUrl(info);
-      if (preview) console.log('OTP email preview URL:', preview);
+
+    try {
+      const info = await withTimeout(sendMail({ from, to, subject: 'Your TwinSoul OTP', html }));
+      // If using Ethereal, print preview URL
+      if (nodemailer.getTestMessageUrl && info) {
+        const preview = nodemailer.getTestMessageUrl(info);
+        if (preview) console.log('OTP email preview URL:', preview);
+      }
+      return info;
+    } catch (err) {
+      console.error('Failed to send OTP email:', err);
+      throw err;
     }
-    return info;
   },
 };
