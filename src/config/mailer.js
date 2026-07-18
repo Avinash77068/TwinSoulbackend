@@ -1,8 +1,10 @@
 const nodemailer = require('nodemailer');
 
+const MAIL_TIMEOUT_MS = Number(process.env.MAIL_TIMEOUT_MS) || 30000;
+
 async function createTransporter() {
   if (process.env.SMTP_HOST && process.env.SMTP_USER) {
-    return nodemailer.createTransport({
+    const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number(process.env.SMTP_PORT) || 587,
       secure: process.env.SMTP_SECURE === 'true',
@@ -10,12 +12,23 @@ async function createTransporter() {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
+      logger: process.env.NODE_ENV !== 'production',
+      debug: process.env.NODE_ENV !== 'production',
+      connectionTimeout: MAIL_TIMEOUT_MS,
+      greetingTimeout: MAIL_TIMEOUT_MS,
+      socketTimeout: MAIL_TIMEOUT_MS,
+      tls: {
+        rejectUnauthorized: process.env.NODE_ENV === 'production',
+      },
     });
+
+    await transporter.verify();
+    return transporter;
   }
 
   // Fallback to Ethereal for development if no SMTP config provided
   const testAccount = await nodemailer.createTestAccount();
-  return nodemailer.createTransport({
+  const transporter = nodemailer.createTransport({
     host: 'smtp.ethereal.email',
     port: 587,
     secure: false,
@@ -23,7 +36,15 @@ async function createTransporter() {
       user: testAccount.user,
       pass: testAccount.pass,
     },
+    logger: process.env.NODE_ENV !== 'production',
+    debug: process.env.NODE_ENV !== 'production',
+    connectionTimeout: MAIL_TIMEOUT_MS,
+    greetingTimeout: MAIL_TIMEOUT_MS,
+    socketTimeout: MAIL_TIMEOUT_MS,
   });
+
+  await transporter.verify();
+  return transporter;
 }
 
 const transporterPromise = createTransporter();
@@ -33,7 +54,7 @@ async function sendMail(mailOptions) {
   return transporter.sendMail(mailOptions);
 }
 
-const withTimeout = (promise, timeoutMs = 10000) =>
+const withTimeout = (promise, timeoutMs = MAIL_TIMEOUT_MS) =>
   Promise.race([
     promise,
     new Promise((_, reject) => {
