@@ -23,10 +23,16 @@ async function createTransporter() {
     });
 
     await transporter.verify();
+    console.log('Mailer initialized: using SMTP host', process.env.SMTP_HOST);
     return transporter;
   }
 
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('Missing SMTP configuration in production: SMTP_HOST and SMTP_USER are required');
+  }
+
   // Fallback to Ethereal for development if no SMTP config provided
+  console.warn('SMTP config missing; falling back to Ethereal test account');
   const testAccount = await nodemailer.createTestAccount();
   const transporter = nodemailer.createTransport({
     host: 'smtp.ethereal.email',
