@@ -8,6 +8,7 @@ router.put('/messages/read', protect, c.markRead);
 router.put('/messages/:id/pin', protect, c.pinMessage);
 router.delete('/messages/clear', protect, c.clearMessages);
 router.delete('/messages/:id', protect, c.deleteMessage);
+router.put('/messages/:id', protect, c.editMessage);
 router.get('/messages/secret', protect, c.getSecretMessages);
 router.get('/messages/pinned', protect, c.getPinnedMessages);
 router.post('/messages/:id/react', protect, c.reactToMessage);

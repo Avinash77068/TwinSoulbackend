@@ -16,6 +16,7 @@ const messageSchema = new mongoose.Schema({
   isPinned: { type: Boolean, default: false },
   isFavorite: { type: Boolean, default: false },
   isSecret: { type: Boolean, default: false },
+  isEdited: { type: Boolean, default: false },
   isRead: { type: Boolean, default: false },
   isDeleted: { type: Boolean, default: false },
   scheduledAt: { type: Date, default: null },

@@ -203,6 +203,37 @@ exports.deleteMessage = async (req, res) => {
   res.json({ success: true, message: 'Message deleted' });
 };
 
+exports.editMessage = async (req, res) => {
+  if (!requireRelationship(req, res)) return;
+  const content = typeof req.body.content === 'string' ? req.body.content.trim() : '';
+  if (!content) {
+    return res.status(400).json({ success: false, message: 'Content required' });
+  }
+
+  const msg = await Message.findOne({ _id: req.params.id, relationshipId: req.user.relationshipId });
+  if (!msg) return res.status(404).json({ success: false, message: 'Message not found' });
+  if (msg.senderId.toString() !== req.user._id.toString()) {
+    return res.status(403).json({ success: false, message: 'Cannot edit partner message' });
+  }
+  if (msg.type !== 'text') {
+    return res.status(400).json({ success: false, message: 'Only text messages can be edited' });
+  }
+
+  msg.content = content;
+  msg.isEdited = true;
+  await msg.save();
+
+  const io = getIo();
+  if (io) {
+    io.to(`relationship:${req.user.relationshipId}`).emit('message:edited', {
+      messageId: msg._id,
+      content: msg.content,
+    });
+  }
+
+  res.json({ success: true, message: 'Message updated', data: { message: msg } });
+};
+
 exports.reactToMessage = async (req, res) => {
   if (!requireRelationship(req, res)) return;
   const { emoji } = req.body;
