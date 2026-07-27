@@ -76,7 +76,7 @@ app.use('/api', apiLimiter);
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
-  res.json({ success: true, message: 'TwinSoul API running ❤️', version: '1.0.0', timestamp: new Date() });
+  res.json({ success: true, message: 'SoulSync API running ❤️', version: '1.0.0', timestamp: new Date() });
 });
 
 app.use('/api/auth', require('./src/routes/auth.routes'));
@@ -150,4 +150,4 @@ cron.schedule('*/2 * * * *', async () => {
 });
 
 const PORT = process.env.PORT || 8000;
-server.listen(PORT, () => console.log(`TwinSoul server running on port ${PORT} ❤️`));
+server.listen(PORT, () => console.log(`SoulSync server running on port ${PORT} ❤️`));

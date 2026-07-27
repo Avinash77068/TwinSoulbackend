@@ -35,7 +35,7 @@ const sendPushNotification = async ({ fcmToken, title, body, data = {} }) => {
           priority: 'high',
           notification: {
             sound: 'default',
-            channelId: 'twinsoul_default',
+            channelId: 'soulsync_default',
           },
         },
         apns: {

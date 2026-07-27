@@ -72,11 +72,14 @@ const { otpTemplate } = require('./emailTemplates');
 
 module.exports = {
   sendOtpEmail: async (to, otp, name) => {
-    const from = process.env.EMAIL_FROM || 'TwinSoul <no-reply@twinsoul.app>';
+    // Display name updated to SoulSync — the domain stays twinsoul.app until that
+    // domain's SPF/DKIM records are moved, otherwise these emails would start
+    // failing sender verification and land in spam (or bounce outright).
+    const from = process.env.EMAIL_FROM || 'SoulSync <no-reply@twinsoul.app>';
     const html = otpTemplate(otp, name);
 
     try {
-      const info = await withTimeout(sendMail({ from, to, subject: 'Your TwinSoul OTP', html }));
+      const info = await withTimeout(sendMail({ from, to, subject: 'Your SoulSync OTP', html }));
       // If using Ethereal, print preview URL
       if (nodemailer.getTestMessageUrl && info) {
         const preview = nodemailer.getTestMessageUrl(info);

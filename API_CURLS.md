@@ -1,4 +1,4 @@
-# TwinSoul Backend — All API Curl Commands
+# SoulSync Backend — All API Curl Commands
 
 > Replace `TOKEN` with the JWT token received after login/register.
 > Replace `BASE_URL` with your server URL (e.g., `http://localhost:8000`)
