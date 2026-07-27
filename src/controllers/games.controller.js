@@ -90,6 +90,17 @@ exports.startGame = async (req, res) => {
       : [],
   });
 
+  // Let the partner know a round is waiting for them, in case they have the
+  // Games screen open (mirrors the wheel-spin real-time notification below).
+  const io = getIo();
+  if (io && req.user.partnerId) {
+    io.to(`user:${req.user.partnerId}`).emit('game:started', {
+      gameId: game._id,
+      gameType,
+      starterName: req.user.nickname || req.user.name || 'Partner',
+    });
+  }
+
   res.status(201).json({
     success: true,
     message: 'Game started! Have fun! 🎮',
@@ -131,14 +142,24 @@ exports.submitAnswer = async (req, res) => {
     }
   }
   await game.save();
-  res.json({ success: true, message: 'Answer submitted', data: { game } });
+
+  // Notify the partner in real time so they don't have to poll for their turn
+  // or for the round having advanced once both answers are in.
+  const io = getIo();
+  if (io && req.user.partnerId) {
+    io.to(`user:${req.user.partnerId}`).emit('game:updated', { gameId: game._id, game });
+  }
+
+  res.json({ success: true, message: 'Answer submitted', data: { game, youAreUser1: isUser1 } });
 };
 
 exports.getGameResult = async (req, res) => {
   if (!requireRelationship(req, res)) return;
   const game = await MiniGame.findOne({ _id: req.params.id, relationshipId: req.user.relationshipId });
   if (!game) return res.status(404).json({ success: false, message: 'Game not found' });
-  res.json({ success: true, data: { game } });
+  const rel = await require('../models/Relationship').findById(game.relationshipId);
+  const youAreUser1 = rel.user1.toString() === req.user._id.toString();
+  res.json({ success: true, data: { game, youAreUser1 } });
 };
 
 // ─── Spin wheel (legacy single-result endpoint) ────────────────────────────────
