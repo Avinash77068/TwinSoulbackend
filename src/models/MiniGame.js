@@ -21,6 +21,10 @@ const miniGameSchema = new mongoose.Schema({
     roundWinner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   }],
   winner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  // Solo local-mechanic games (memory_challenge) don't use rounds/answers —
+  // just record the finishing stats when the client reports completion.
+  moves: { type: Number, default: null },
+  timeSeconds: { type: Number, default: null },
 }, { timestamps: true });
 
 module.exports = mongoose.model('MiniGame', miniGameSchema);

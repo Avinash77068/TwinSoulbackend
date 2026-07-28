@@ -11,5 +11,7 @@ router.get('/profile', protect, c.getProfile);
 router.put('/profile', protect, upload.single('profilePhoto'), handleR2Upload, c.updateProfile);
 router.post('/regenerate-codes', protect, c.regenerateCodes);
 router.post('/fcm-token', protect, c.saveFcmToken);
+router.put('/preferences', protect, c.updatePreferences);
+router.put('/change-password', protect, c.changePassword);
 
 module.exports = router;

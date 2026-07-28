@@ -195,16 +195,57 @@ exports.getProfile = async (req, res) => {
 };
 
 exports.updateProfile = async (req, res) => {
-  const { name, nickname, relationshipStartDate, fcmToken } = req.body;
+  const { name, nickname, relationshipStartDate, fcmToken, bio, interests } = req.body;
   const updates = {};
   if (name) updates.name = name;
   if (nickname) updates.nickname = nickname;
   if (relationshipStartDate) updates.relationshipStartDate = relationshipStartDate;
   if (fcmToken) updates.fcmToken = fcmToken;
+  if (bio !== undefined) updates.bio = String(bio).slice(0, 200);
+  if (Array.isArray(interests)) updates.interests = interests.map(String).slice(0, 20);
   if (req.file) updates.profilePhoto = req.file.cloudUrl;
 
   const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true }).select('-password');
   res.json({ success: true, message: 'Profile updated', data: { user } });
+};
+
+// Personal, per-device-independent preferences — NOT shared with the partner
+// (unlike bubbleColor/Theme, which are relationship-scoped).
+exports.updatePreferences = async (req, res) => {
+  const { language, pushNotificationsEnabled, themeMode } = req.body;
+  const updates = {};
+  if (language !== undefined) updates.language = String(language);
+  if (pushNotificationsEnabled !== undefined) updates.pushNotificationsEnabled = !!pushNotificationsEnabled;
+  if (themeMode !== undefined) {
+    if (!['dark', 'light'].includes(themeMode)) {
+      return res.status(400).json({ success: false, message: 'themeMode must be "dark" or "light"' });
+    }
+    updates.themeMode = themeMode;
+  }
+
+  const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true }).select('-password');
+  res.json({ success: true, message: 'Preferences updated', data: { user } });
+};
+
+exports.changePassword = async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ success: false, message: 'Current and new password are required' });
+  }
+  if (newPassword.length < 6) {
+    return res.status(400).json({ success: false, message: 'New password must be at least 6 characters' });
+  }
+
+  const user = await User.findById(req.user._id);
+  const matches = await user.comparePassword(currentPassword);
+  if (!matches) {
+    return res.status(401).json({ success: false, message: 'Current password is incorrect' });
+  }
+
+  user.password = newPassword; // re-hashed by the pre('save') hook
+  await user.save();
+
+  res.json({ success: true, message: 'Password changed successfully' });
 };
 
 exports.regenerateCodes = async (req, res) => {

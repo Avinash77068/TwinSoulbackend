@@ -100,6 +100,8 @@ app.use('/api/youtube', require('./src/routes/youtube.routes'));
 app.use('/api/theme',  require('./src/routes/theme.routes'));
 app.use('/api/calls',  require('./src/routes/call.routes'));
 app.use('/api/feedback', require('./src/routes/feedback.routes'));
+app.use('/api/goals', require('./src/routes/goals.routes'));
+app.use('/api/legal', require('./src/routes/legal.routes'));
 
 app.use(notFound);
 app.use(errorHandler);

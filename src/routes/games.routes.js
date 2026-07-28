@@ -15,6 +15,7 @@ router.get('/spin', protect, c.spinWheel);
 router.get('/', protect, c.getGames);
 router.post('/start', protect, c.startGame);
 router.post('/:id/answer', protect, c.submitAnswer);
+router.post('/:id/complete', protect, c.completeGame);
 router.get('/:id/result', protect, c.getGameResult);
 
 module.exports = router;

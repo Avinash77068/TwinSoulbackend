@@ -30,6 +30,11 @@ const userSchema = new mongoose.Schema({
   isOnline: { type: Boolean, default: false },
   fcmToken: { type: String, default: '' },
   bubbleColor: { type: String, default: '#EC4899' },
+  bio: { type: String, default: '', maxlength: 200 },
+  interests: { type: [String], default: [] },
+  language: { type: String, default: 'English' },
+  pushNotificationsEnabled: { type: Boolean, default: true },
+  themeMode: { type: String, enum: ['dark', 'light'], default: 'dark' },
   messages: [userMessageSchema],
 }, { timestamps: true });
 

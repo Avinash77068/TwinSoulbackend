@@ -153,6 +153,23 @@ exports.submitAnswer = async (req, res) => {
   res.json({ success: true, message: 'Answer submitted', data: { game, youAreUser1: isUser1 } });
 };
 
+// Used by solo local-mechanic games (memory_challenge) which don't go through
+// the turn-based rounds/answer flow — just reports final stats once finished.
+exports.completeGame = async (req, res) => {
+  if (!requireRelationship(req, res)) return;
+  const { moves, timeSeconds } = req.body;
+
+  const game = await MiniGame.findOne({ _id: req.params.id, relationshipId: req.user.relationshipId });
+  if (!game) return res.status(404).json({ success: false, message: 'Game not found' });
+
+  if (typeof moves === 'number') game.moves = moves;
+  if (typeof timeSeconds === 'number') game.timeSeconds = timeSeconds;
+  game.status = 'completed';
+  await game.save();
+
+  res.json({ success: true, message: 'Game marked complete', data: { game } });
+};
+
 exports.getGameResult = async (req, res) => {
   if (!requireRelationship(req, res)) return;
   const game = await MiniGame.findOne({ _id: req.params.id, relationshipId: req.user.relationshipId });
