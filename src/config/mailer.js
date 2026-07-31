@@ -1,64 +1,13 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
+const { otpTemplate } = require('./emailTemplates');
+
+// Resend replaces the old Gmail-SMTP setup — that was getting silently
+// blocked because Google flags SMTP logins from cloud/datacenter IPs (Render's
+// IP) as suspicious. Resend is a proper transactional email API (no SMTP
+// handshake to get blocked) with a real free tier: 3,000 emails/month, 100/day.
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const MAIL_TIMEOUT_MS = Number(process.env.MAIL_TIMEOUT_MS) || 30000;
-
-async function createTransporter() {
-  if (process.env.SMTP_HOST && process.env.SMTP_USER) {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: process.env.SMTP_SECURE === 'true',
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-      logger: process.env.NODE_ENV !== 'production',
-      debug: process.env.NODE_ENV !== 'production',
-      connectionTimeout: MAIL_TIMEOUT_MS,
-      greetingTimeout: MAIL_TIMEOUT_MS,
-      socketTimeout: MAIL_TIMEOUT_MS,
-      tls: {
-        rejectUnauthorized: process.env.NODE_ENV === 'production',
-      },
-    });
-
-    await transporter.verify();
-    console.log('Mailer initialized: using SMTP host', process.env.SMTP_HOST);
-    return transporter;
-  }
-
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('Missing SMTP configuration in production: SMTP_HOST and SMTP_USER are required');
-  }
-
-  // Fallback to Ethereal for development if no SMTP config provided
-  console.warn('SMTP config missing; falling back to Ethereal test account');
-  const testAccount = await nodemailer.createTestAccount();
-  const transporter = nodemailer.createTransport({
-    host: 'smtp.ethereal.email',
-    port: 587,
-    secure: false,
-    auth: {
-      user: testAccount.user,
-      pass: testAccount.pass,
-    },
-    logger: process.env.NODE_ENV !== 'production',
-    debug: process.env.NODE_ENV !== 'production',
-    connectionTimeout: MAIL_TIMEOUT_MS,
-    greetingTimeout: MAIL_TIMEOUT_MS,
-    socketTimeout: MAIL_TIMEOUT_MS,
-  });
-
-  await transporter.verify();
-  return transporter;
-}
-
-const transporterPromise = createTransporter();
-
-async function sendMail(mailOptions) {
-  const transporter = await transporterPromise;
-  return transporter.sendMail(mailOptions);
-}
 
 const withTimeout = (promise, timeoutMs = MAIL_TIMEOUT_MS) =>
   Promise.race([
@@ -68,27 +17,27 @@ const withTimeout = (promise, timeoutMs = MAIL_TIMEOUT_MS) =>
     }),
   ]);
 
-const { otpTemplate } = require('./emailTemplates');
-
 module.exports = {
   sendOtpEmail: async (to, otp, name) => {
-    // Display name updated to SoulSync — the domain stays twinsoul.app until that
-    // domain's SPF/DKIM records are moved, otherwise these emails would start
-    // failing sender verification and land in spam (or bounce outright).
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error('Missing RESEND_API_KEY in environment — cannot send email');
+    }
+
+    // Until twinsoul.app is verified in the Resend dashboard (DNS/SPF/DKIM
+    // records), Resend's sandbox only allows sending to the account's own
+    // signup email — real users' OTP emails will fail with a 403 until then.
     const from = process.env.EMAIL_FROM || 'SoulSync <no-reply@twinsoul.app>';
     const html = otpTemplate(otp, name);
 
-    try {
-      const info = await withTimeout(sendMail({ from, to, subject: 'Your SoulSync OTP', html }));
-      // If using Ethereal, print preview URL
-      if (nodemailer.getTestMessageUrl && info) {
-        const preview = nodemailer.getTestMessageUrl(info);
-        if (preview) console.log('OTP email preview URL:', preview);
-      }
-      return info;
-    } catch (err) {
-      console.error('Failed to send OTP email:', err);
-      throw err;
+    const { data, error } = await withTimeout(
+      resend.emails.send({ from, to, subject: 'Your SoulSync OTP', html }),
+    );
+
+    if (error) {
+      console.error('Failed to send OTP email:', error);
+      throw new Error(error.message || 'Failed to send OTP email');
     }
+
+    return data;
   },
 };
