@@ -7,6 +7,7 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "seed:music": "node src/seeds/musicSeed.js",
+    "migrate:theme-accent": "node src/scripts/migrateThemeAccentColor.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",

@@ -20,7 +20,7 @@ const themeSchema = new mongoose.Schema(
     // Brand colours
     primary:      { type: String, default: '#EC4899' },
     primaryMuted: { type: String, default: 'rgba(236,72,153,0.15)' },
-    accent:       { type: String, default: '#F472B6' },
+    accent:       { type: String, default: '#38BDF8' },
 
     // Text
     text:      { type: String, default: '#FFFFFF' },
