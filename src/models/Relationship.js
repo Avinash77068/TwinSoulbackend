@@ -8,6 +8,7 @@ const featuresSchema = new mongoose.Schema({
   music:         { type: Boolean, default: true },
   loveTree:      { type: Boolean, default: true },
   watchTogether: { type: Boolean, default: false },
+  goals:         { type: Boolean, default: true },
 }, { _id: false });
 
 const relationshipSchema = new mongoose.Schema({

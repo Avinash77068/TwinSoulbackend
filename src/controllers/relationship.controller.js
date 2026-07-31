@@ -247,7 +247,7 @@ exports.getDashboard = async (req, res) => {
 
   const defaultFeatures = {
     voiceCall: true, videoCall: true, chat: true,
-    memories: true, music: true, loveTree: true, watchTogether: true,
+    memories: true, music: true, loveTree: true, watchTogether: true, goals: true,
   };
 
   res.json({
@@ -322,7 +322,7 @@ exports.updateFeatures = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Not in a relationship' });
   }
 
-  const VALID_KEYS = ['voiceCall', 'videoCall', 'chat', 'memories', 'music', 'loveTree', 'watchTogether'];
+  const VALID_KEYS = ['voiceCall', 'videoCall', 'chat', 'memories', 'music', 'loveTree', 'watchTogether', 'goals'];
   const { featureKey, enabled } = req.body;
 
   if (!VALID_KEYS.includes(featureKey)) {
