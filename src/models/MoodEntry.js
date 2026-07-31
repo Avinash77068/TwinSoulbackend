@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const moodEntrySchema = new mongoose.Schema({
   relationshipId: { type: mongoose.Schema.Types.ObjectId, ref: 'Relationship', required: true },
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  mood: { type: String, enum: ['happy', 'loved', 'missing', 'sad', 'relaxed'], required: true },
+  mood: { type: String, enum: ['loved', 'happy', 'neutral', 'sad', 'anxious', 'angry'], required: true },
   note: { type: String, default: '' },
   date: { type: String, required: true },
 }, { timestamps: true });
