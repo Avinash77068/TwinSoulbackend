@@ -26,7 +26,7 @@ module.exports = {
     // Until twinsoul.app is verified in the Resend dashboard (DNS/SPF/DKIM
     // records), Resend's sandbox only allows sending to the account's own
     // signup email — real users' OTP emails will fail with a 403 until then.
-    const from = process.env.EMAIL_FROM || 'SoulSync <no-reply@twinsoul.app>';
+    const from = process.env.EMAIL_FROM || 'SoulSync <no-reply@soulsync.app>';
     const html = otpTemplate(otp, name);
 
     const { data, error } = await withTimeout(
