@@ -72,11 +72,9 @@ module.exports = (io, socket) => {
       }, 45_000);
       ringTimeouts.set(callId, timeout);
       
-      // FCM sirf tab bhejo jab callee ka socket connected nahi (background/killed)
-      // Socket connected hai to modal already show ho jaayega — duplicate avoid karo
       try {
-        const calleeSockets = await io.in(`user:${calleeId}`).fetchSockets();
-        if (calleeSockets.length === 0) {
+        const calleePresence = await Presence.findOne({ userId: calleeId });
+        if (!calleePresence?.isOnline) {
           const callee = await User.findById(calleeId).select('fcmToken');
           if (callee?.fcmToken) {
             await sendPushNotification({
