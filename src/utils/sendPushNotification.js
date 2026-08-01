@@ -11,11 +11,6 @@ const sendPushNotification = async ({ fcmToken, title, body, data = {} }) => {
 
   const isCall = data.type === 'incoming_call';
 
-  // Incoming calls MUST be data-only: a `notification` block makes Android
-  // render a plain system notification itself and skip the app's background
-  // handler entirely — the native CallStyle (Answer/Decline) notification
-  // would never be shown. Data-only + high priority wakes the handler even
-  // with the app killed.
   const message = isCall
     ? {
         token: fcmToken,
