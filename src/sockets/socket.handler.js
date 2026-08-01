@@ -274,6 +274,28 @@ module.exports = (io) => {
       await Presence.findOneAndUpdate({ userId }, { lastHeartbeat: new Date() });
     });
 
+    // App backgrounded/foregrounded — flips presence immediately instead of
+    // waiting on the socket's transport-level disconnect (which can lag tens
+    // of seconds behind the app actually leaving the foreground, during which
+    // push notifications would be wrongly skipped as "partner is online").
+    socket.on('presence:background', async () => {
+      await Presence.findOneAndUpdate({ userId }, { isOnline: false, lastSeen: new Date() });
+      if (user?.relationshipId) {
+        socket.to(`relationship:${user.relationshipId}`).emit('partner:offline', { userId });
+      }
+    });
+
+    socket.on('presence:foreground', async () => {
+      await Presence.findOneAndUpdate(
+        { userId },
+        { isOnline: true, lastHeartbeat: new Date(), socketId: socket.id },
+        { upsert: true },
+      );
+      if (user?.relationshipId) {
+        socket.to(`relationship:${user.relationshipId}`).emit('partner:online', { userId });
+      }
+    });
+
     socket.on('disconnect', async () => {
       const now = new Date();
       await Promise.all([
