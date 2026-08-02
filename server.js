@@ -93,6 +93,7 @@ app.use('/api/lovetree', require('./src/routes/lovetree.routes'));
 app.use('/api/levels', require('./src/routes/levels.routes'));
 app.use('/api/timeline', require('./src/routes/timeline.routes'));
 app.use('/api/games', require('./src/routes/games.routes'));
+app.use('/api/custom-questions', require('./src/routes/customQuestion.routes'));
 app.use('/api/ai', require('./src/routes/ai.routes'));
 app.use('/api/notifications', require('./src/routes/notifications.routes'));
 app.use('/api/presence', require('./src/routes/presence.routes'));
