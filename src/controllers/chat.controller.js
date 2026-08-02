@@ -247,6 +247,12 @@ exports.reactToMessage = async (req, res) => {
   else msg.reactions.push({ userId: req.user._id, emoji });
 
   await msg.save();
+
+  const io = getIo();
+  if (io) {
+    io.to(`relationship:${req.user.relationshipId}`).emit('message:reaction', { messageId: msg._id, reactions: msg.reactions });
+  }
+
   res.json({ success: true, message: 'Reaction added', data: { reactions: msg.reactions } });
 };
 
@@ -256,7 +262,13 @@ exports.removeReaction = async (req, res) => {
   if (!msg) return res.status(404).json({ success: false, message: 'Message not found' });
   msg.reactions = msg.reactions.filter(r => r.userId.toString() !== req.user._id.toString());
   await msg.save();
-  res.json({ success: true, message: 'Reaction removed' });
+
+  const io = getIo();
+  if (io) {
+    io.to(`relationship:${req.user.relationshipId}`).emit('message:reaction', { messageId: msg._id, reactions: msg.reactions });
+  }
+
+  res.json({ success: true, message: 'Reaction removed', data: { reactions: msg.reactions } });
 };
 
 exports.pinMessage = async (req, res) => {
