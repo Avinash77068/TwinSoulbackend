@@ -70,6 +70,8 @@ exports.getGames = async (req, res) => {
   res.json({ success: true, data: { available, recentGames: games } });
 };
 
+const TURN_BASED_TYPES = ['truth_dare', 'who_knows_better', 'this_or_that', 'love_quiz'];
+
 exports.startGame = async (req, res) => {
   if (!requireRelationship(req, res)) return;
   const { gameType } = req.body;
@@ -78,7 +80,24 @@ exports.startGame = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Invalid game type' });
   }
 
-  const questions     = GAME_QUESTIONS[gameType] || [];
+  const questions = GAME_QUESTIONS[gameType] || [];
+
+  if (TURN_BASED_TYPES.includes(gameType)) {
+    const existing = await MiniGame.findOne({
+      relationshipId: req.user.relationshipId,
+      gameType,
+      status: 'active',
+    }).sort({ createdAt: -1 });
+
+    if (existing) {
+      return res.json({
+        success: true,
+        message: 'Joined existing game',
+        data: { gameId: existing._id, game: existing, firstQuestion: null, allQuestions: questions },
+      });
+    }
+  }
+
   const firstQuestion = Array.isArray(questions) ? questions[0] : null;
 
   const game = await MiniGame.create({
