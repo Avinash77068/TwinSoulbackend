@@ -6,15 +6,15 @@
  * which is the single most common way invite flows break.
  *
  * Required env:
- *   ANDROID_PACKAGE_NAME   e.g. com.twinsoul
+ *   ANDROID_PACKAGE_NAME   must match applicationId in android/app/build.gradle (com.soulsync)
  *   ANDROID_SHA256_CERTS   comma-separated SHA-256 signing-cert fingerprints
  *                          (get with: keytool -list -v -keystore <release.keystore>)
  *   IOS_TEAM_ID            Apple Developer Team ID
- *   IOS_BUNDLE_ID          e.g. com.twinsoul
+ *   IOS_BUNDLE_ID          must match applicationId in android/app/build.gradle (com.soulsync)
  */
 
 const assetLinks = () => {
-  const pkg = process.env.ANDROID_PACKAGE_NAME || 'com.twinsoul';
+  const pkg = process.env.ANDROID_PACKAGE_NAME || 'com.soulsync';
   const certs = (process.env.ANDROID_SHA256_CERTS || '')
     .split(',')
     .map((c) => c.trim().toUpperCase())
@@ -38,7 +38,7 @@ const assetLinks = () => {
 
 const appleAppSiteAssociation = () => {
   const teamId = process.env.IOS_TEAM_ID || 'TEAMID';
-  const bundleId = process.env.IOS_BUNDLE_ID || 'com.twinsoul';
+  const bundleId = process.env.IOS_BUNDLE_ID || 'com.soulsync';
   const appId = `${teamId}.${bundleId}`;
 
   return JSON.stringify(

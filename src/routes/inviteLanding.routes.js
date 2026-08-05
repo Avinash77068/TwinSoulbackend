@@ -16,7 +16,7 @@ const esc = (s) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
   );
 
-const ANDROID_PKG = process.env.ANDROID_PACKAGE_NAME || 'com.twinsoul';
+const ANDROID_PKG = process.env.ANDROID_PACKAGE_NAME || 'com.soulsync';
 const IOS_APP_ID = process.env.IOS_APP_STORE_ID || '';
 const PLAY_URL = `https://play.google.com/store/apps/details?id=${ANDROID_PKG}`;
 const APPSTORE_URL = IOS_APP_ID ? `https://apps.apple.com/app/id${IOS_APP_ID}` : 'https://apps.apple.com/';
