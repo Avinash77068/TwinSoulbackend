@@ -111,6 +111,72 @@ const run = async () => {
   }
   log(`Step 4: restaged ${restaged} of ${trees.length} love tree(s)`);
 
+  // ── 5. Backfill partnerStatus for partner search ───────────────────────────
+  // `joined`    — currently connected
+  // `broken_up` — has at least one archived/ended relationship
+  // `single`    — everyone else
+  //
+  // discoveryOptIn is deliberately left FALSE for every existing user: nobody
+  // who signed up before this feature existed consented to being listed in
+  // partner search, and backfilling consent would be exactly the wrong move.
+  const connected = await User.countDocuments({ isConnected: true, partnerStatus: { $ne: 'joined' } });
+  log(`Step 5a: ${connected} connected user(s) → partnerStatus 'joined'`);
+  if (!DRY && connected) {
+    await User.updateMany({ isConnected: true }, { partnerStatus: 'joined' });
+  }
+
+  const archivedRels = await Relationship.find({
+    status: { $in: ['archived', 'ended'] },
+  }).select('user1 user2 archivedAt endedAt updatedAt');
+
+  // Most recent breakup per user, so lastBreakupAt is meaningful for sorting.
+  const breakupByUser = new Map();
+  for (const rel of archivedRels) {
+    const when = rel.archivedAt || rel.endedAt || rel.updatedAt;
+    for (const uid of [rel.user1, rel.user2].filter(Boolean)) {
+      const key = String(uid);
+      const prev = breakupByUser.get(key);
+      if (!prev || new Date(when) > new Date(prev)) breakupByUser.set(key, when);
+    }
+  }
+
+  let brokeUp = 0;
+  for (const [uid, when] of breakupByUser) {
+    const u = await User.findById(uid).select('isConnected partnerStatus');
+    if (!u || u.isConnected) continue; // a new relationship wins
+    brokeUp++;
+    if (DRY) continue;
+    await User.updateOne(
+      { _id: uid },
+      { partnerStatus: 'broken_up', lastBreakupAt: when },
+    );
+  }
+  log(`Step 5b: ${brokeUp} user(s) → partnerStatus 'broken_up'`);
+
+  // Relationship counts, derived from the archive.
+  let counted = 0;
+  if (!DRY) {
+    const countByUser = new Map();
+    for (const rel of archivedRels) {
+      for (const uid of [rel.user1, rel.user2].filter(Boolean)) {
+        const key = String(uid);
+        countByUser.set(key, (countByUser.get(key) || 0) + 1);
+      }
+    }
+    for (const [uid, n] of countByUser) {
+      await User.updateOne({ _id: uid }, { relationshipCount: n });
+      counted++;
+    }
+  }
+  log(`Step 5c: relationshipCount set for ${DRY ? breakupByUser.size : counted} user(s)`);
+
+  const stillSingle = await User.countDocuments({
+    isConnected: false,
+    partnerStatus: { $nin: ['broken_up'] },
+  });
+  log(`Step 5d: ${stillSingle} user(s) remain 'single'`);
+  log('Step 5e: discoveryOptIn left FALSE for all existing users (consent not backfilled)');
+
   console.log(`\n${DRY ? 'Dry run complete — nothing written.' : 'Migration complete.'}`);
   await mongoose.disconnect();
 };

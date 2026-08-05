@@ -44,6 +44,21 @@ const userSchema = new mongoose.Schema({
   isConnected: { type: Boolean, default: false },
   partnerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   relationshipId: { type: mongoose.Schema.Types.ObjectId, ref: 'Relationship', default: null },
+
+
+  partnerStatus: {
+    type: String,
+    enum: ['single', 'joined', 'broken_up'],
+    default: 'single',
+  },
+  lastBreakupAt: { type: Date, default: null },
+  relationshipCount: { type: Number, default: 0 },
+
+  discoveryOptIn: { type: Boolean, default: false },
+  discoveryOptInAt: { type: Date, default: null },
+  discoveryCity: { type: String, default: '', trim: true, maxlength: 60 },
+  isPremium: { type: Boolean, default: false },
+  premiumUntil: { type: Date, default: null },
   otp: { type: String },
   otpExpiry: { type: Date },
   isVerified: { type: Boolean, default: false },
@@ -59,10 +74,43 @@ const userSchema = new mongoose.Schema({
   messages: [userMessageSchema],
 }, { timestamps: true });
 
+// ── Indexes ──────────────────────────────────────────────────────────────────
+/**
+ * Partner-search index. Every discovery query filters on the same three fields
+ * (status + consent + not-currently-connected) and sorts by recency, so this
+ * compound index covers it end to end and keeps the search off a collection scan.
+ */
+userSchema.index({ partnerStatus: 1, discoveryOptIn: 1, isConnected: 1, lastSeen: -1 });
+/** Interest/language faceting within a discovery search. */
+userSchema.index({ discoveryOptIn: 1, interests: 1 });
+/** Entitlement lookups and premium-expiry sweeps. */
+userSchema.index({ isPremium: 1, premiumUntil: 1 });
+
 userSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
   this.password = await bcrypt.hash(this.password, 12);
 });
+userSchema.methods.hasPremium = function () {
+  if (!this.isPremium) return false;
+  if (!this.premiumUntil) return true; // no expiry set = lifetime/manual grant
+  return new Date(this.premiumUntil) > new Date();
+};
+
+userSchema.methods.toDiscoveryCard = function () {
+  return {
+    _id: this._id,
+    name: this.name,
+    nickname: this.nickname,
+    profilePhoto: this.profilePhoto,
+    bio: this.bio,
+    interests: this.interests,
+    language: this.language,
+    city: this.discoveryCity || '',
+    partnerStatus: this.partnerStatus,
+    // Coarse recency only — never the exact breakup timestamp.
+    availableSince: this.lastBreakupAt || this.discoveryOptInAt || this.createdAt,
+  };
+};
 
 userSchema.methods.comparePassword = async function (candidate) {
   return bcrypt.compare(candidate, this.password);

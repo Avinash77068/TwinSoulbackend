@@ -10,7 +10,11 @@
     "migrate:theme-accent": "node src/scripts/migrateThemeAccentColor.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "check:progression": "node src/scripts/checkProgressionSync.js",
-    "migrate:lifecycle": "node src/scripts/migrateRelationshipLifecycle.js"
+    "migrate:lifecycle": "node src/scripts/migrateRelationshipLifecycle.js",
+    "premium": "node src/scripts/setPremium.js",
+    "premium:list": "node src/scripts/setPremium.js --list",
+    "config": "node src/scripts/setAppConfig.js",
+    "config:set": "node src/scripts/setAppConfig.js"
   },
   "author": "",
   "license": "ISC",

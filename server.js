@@ -81,6 +81,7 @@ app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/relationship/connect', connectLimiter);
 app.use('/api/invite', connectLimiter);
+app.use('/api/discover/interest', connectLimiter);
 app.use('/api', apiLimiter);
 
 // ── Routes ────────────────────────────────────────────────────────────────────
@@ -92,6 +93,8 @@ app.use('/api/auth', require('./src/routes/auth.routes'));
 app.use('/api/relationship', require('./src/routes/relationship.routes'));
 app.use('/api/invite', require('./src/routes/invite.routes'));
 app.use('/api/archive', require('./src/routes/archive.routes'));
+app.use('/api/discover', require('./src/routes/discovery.routes'));
+app.use('/api/premium', require('./src/routes/premium.routes'));
 app.use('/api/chat', require('./src/routes/chat.routes'));
 app.use('/api/music', require('./src/routes/music.routes'));
 app.use('/api/photos', require('./src/routes/photos.routes'));

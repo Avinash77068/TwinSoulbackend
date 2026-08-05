@@ -174,6 +174,15 @@ exports.acceptInvite = async (req, res) => {
     return res.status(400).json({ success: false, message: "That's your own invite 🙂" });
   }
 
+  // Invites created from partner discovery are bound to one specific user, so a
+  // forwarded link cannot be redeemed by a third party.
+  if (invite.targetUserId && String(invite.targetUserId) !== String(req.user._id)) {
+    return res.status(403).json({
+      success: false,
+      message: 'This invite was sent to someone else.',
+    });
+  }
+
   // Targeted invites may only be redeemed by the intended recipient.
   if (invite.targetHash) {
     const mine = [

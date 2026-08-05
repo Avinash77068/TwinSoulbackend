@@ -14,7 +14,7 @@ const crypto = require('crypto');
  * sheet, QR code, SMS and email invites all carry.
  */
 
-const CHANNELS = ['link', 'qr', 'sms', 'email', 'contact', 'code'];
+const CHANNELS = ['link', 'qr', 'sms', 'email', 'contact', 'code', 'discover'];
 
 const inviteTokenSchema = new mongoose.Schema({
   token: { type: String, required: true, unique: true, index: true },
@@ -27,6 +27,12 @@ const inviteTokenSchema = new mongoose.Schema({
    * cannot be redeemed by a stranger.
    */
   targetHash: { type: String, default: null },
+  /**
+   * Binding to a specific TwinSoul user, used by partner discovery
+   * (channel: 'discover'). Only this user may redeem the invite, so a forwarded
+   * link cannot be used by a third party.
+   */
+  targetUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   /** Optional personal note shown on the accept screen. */
   message: { type: String, default: '', maxlength: 200 },
 
@@ -46,6 +52,10 @@ const inviteTokenSchema = new mongoose.Schema({
 
 inviteTokenSchema.index({ inviterId: 1, createdAt: -1 });
 inviteTokenSchema.index({ inviterId: 1, usedAt: 1, revokedAt: 1, expiresAt: 1 });
+// "Have I already invited this person?" during a discovery search.
+inviteTokenSchema.index({ inviterId: 1, targetUserId: 1, usedAt: 1, revokedAt: 1 });
+// "Who has invited me?" for the recipient's inbox.
+inviteTokenSchema.index({ targetUserId: 1, usedAt: 1, revokedAt: 1, expiresAt: 1 });
 // Sweep long-dead tokens 30 days past expiry; the app enforces expiry itself so
 // analytics can still see recently-expired invites.
 inviteTokenSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 60 * 60 * 24 * 30 });

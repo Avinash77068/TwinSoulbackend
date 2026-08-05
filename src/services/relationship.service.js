@@ -17,16 +17,27 @@ const DAY_MS = 24 * 60 * 60 * 1000;
  * all run the SAME activation/ending logic instead of three divergent copies.
  */
 
-/** Link both users to a relationship. */
+/**
+ * Link both users to a relationship.
+ *
+ * Also flips `partnerStatus` to `'joined'` and clears `discoveryOptIn`: someone who
+ * is now in a relationship must drop out of partner search immediately, both
+ * because listing them would be useless and because it would leak their status.
+ */
 const linkUsers = async (relationship) => {
+  const patch = {
+    isConnected: true,
+    partnerStatus: 'joined',
+    discoveryOptIn: false,
+  };
   await Promise.all([
     User.findByIdAndUpdate(relationship.user1, {
-      isConnected: true,
+      ...patch,
       partnerId: relationship.user2,
       relationshipId: relationship._id,
     }),
     User.findByIdAndUpdate(relationship.user2, {
-      isConnected: true,
+      ...patch,
       partnerId: relationship.user1,
       relationshipId: relationship._id,
     }),
@@ -35,12 +46,24 @@ const linkUsers = async (relationship) => {
 
 /**
  * Unlink both users from their current relationship.
+ *
  * Guarded so we never clear a user who has already moved on to a NEW
  * relationship — the old code unconditionally nulled both users, which could
  * clobber a newer partnership.
+ *
+ * Sets `partnerStatus: 'broken_up'` and stamps `lastBreakupAt`, which is what
+ * makes partner search possible. `discoveryOptIn` is NOT auto-enabled here:
+ * ending a relationship is not consent to be listed to strangers. The user opts
+ * in themselves from Settings.
  */
 const unlinkUsers = async (relationship) => {
-  const clear = { isConnected: false, partnerId: null, relationshipId: null };
+  const clear = {
+    isConnected: false,
+    partnerId: null,
+    relationshipId: null,
+    partnerStatus: 'broken_up',
+    lastBreakupAt: new Date(),
+  };
   await Promise.all([
     User.updateOne({ _id: relationship.user1, relationshipId: relationship._id }, clear),
     User.updateOne({ _id: relationship.user2, relationshipId: relationship._id }, clear),
@@ -219,12 +242,25 @@ const undoEnding = async (relationship) => {
 
 /** Grace period expired → durable read-only archive. */
 const archiveRelationship = async (relationship) => {
+  const wasAlreadyArchived = relationship.isArchived;
+
   relationship.status = 'archived';
   relationship.isArchived = true;
   relationship.archivedAt = new Date();
   relationship.gracePeriodEndsAt = null;
   await relationship.save();
   await unlinkUsers(relationship);
+
+  // Counted here, not in unlinkUsers: unlinkUsers also runs during beginEnding,
+  // and an undo inside the grace period must not leave a phantom count behind.
+  // This is the point the breakup becomes final.
+  if (!wasAlreadyArchived) {
+    await User.updateMany(
+      { _id: { $in: [relationship.user1, relationship.user2].filter(Boolean) } },
+      { $inc: { relationshipCount: 1 }, $set: { partnerStatus: 'broken_up' } },
+    ).catch(() => {});
+  }
+
   emitToBoth(relationship, 'relationship:archived', { relationshipId: relationship._id });
   return relationship;
 };
