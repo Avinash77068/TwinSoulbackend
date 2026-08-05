@@ -1,7 +1,7 @@
 const MoodEntry = require('../models/MoodEntry');
-const LoveTree = require('../models/LoveTree');
 const { getIo } = require('../config/socketInstance');
 const awardXP = require('../utils/awardXP');
+const awardTreePoints = require('../utils/awardTreePoints');
 
 const requireRelationship = (req, res) => {
   if (!req.user.relationshipId) {
@@ -29,8 +29,7 @@ exports.checkin = async (req, res) => {
     { upsert: true, new: true }
   );
 
-  const tree = await LoveTree.findOne({ relationshipId: req.user.relationshipId });
-  if (tree) { tree.checkinPoints += 2; tree.points += 2; tree.lastWatered = new Date(); await tree.save(); }
+  await awardTreePoints(req.user.relationshipId, 'checkin');
 
   // Notify partner in real-time
   if (req.user.partnerId) {
@@ -44,7 +43,7 @@ exports.checkin = async (req, res) => {
     }
   }
 
-  awardXP(req.user.relationshipId, 8); // +8 XP per mood check-in
+  awardXP(req.user.relationshipId, 'moodCheck');
   res.json({ success: true, message: 'Mood checked in ❤️', data: { mood: entry } });
 };
 

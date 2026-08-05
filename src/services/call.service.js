@@ -3,12 +3,15 @@
 
 const activeCalls = new Map(); // callId → CallRecord
 
-const createCall = (callerId, calleeId, type) => {
+const createCall = (callerId, calleeId, type, relationshipId = null) => {
   const callId = `call_${Date.now()}_${String(callerId).slice(-6)}`;
   activeCalls.set(callId, {
     callId,
     callerId: String(callerId),
     calleeId: String(calleeId),
+    // Carried so the call can be written to CallLog on teardown — the dashboard's
+    // "Call Hours" statistic depends on it.
+    relationshipId: relationshipId ? String(relationshipId) : null,
     type,
     status: 'ringing',
     startedAt: Date.now(),

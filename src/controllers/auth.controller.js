@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const User = require('../models/User');
 const Relationship = require('../models/Relationship');
 const LoveTree = require('../models/LoveTree');
@@ -14,18 +15,23 @@ const signToken = (id) =>
 const signPendingToken = (email) =>
   jwt.sign({ email, type: 'pending' }, process.env.JWT_SECRET, { expiresIn: '30m' });
 
+/**
+ * Secrets below use crypto.randomInt, not Math.random. Math.random is not a CSPRNG
+ * and its output is predictable from observed values — unacceptable for a couple
+ * code, a connection password, or an OTP.
+ */
 const generateCoupleCode = () => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
-  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 6; i++) code += chars[crypto.randomInt(0, chars.length)];
   return code;
 };
 
-const generateConnectionPassword = () =>
-  Math.floor(1000 + Math.random() * 9000).toString();
+// 6 digits (was 4 → ~9,000 possibilities). Still only a *request* credential:
+// the receiver must explicitly approve, so safety comes from consent, not entropy.
+const generateConnectionPassword = () => String(crypto.randomInt(100000, 1000000));
 
-const generateOtp = () =>
-  Math.floor(100000 + Math.random() * 900000).toString();
+const generateOtp = () => String(crypto.randomInt(100000, 1000000));
 
 // Step 1: collect registration data, generate OTP — user not created yet
 exports.register = async (req, res) => {
@@ -124,16 +130,19 @@ exports.completeRegistration = async (req, res) => {
 
   const connectionPassword = generateConnectionPassword();
 
-  const user = await User.create({
+  // Stored as a bcrypt hash only. The plaintext is returned in THIS response so
+  // the app can show it once; it is never persisted or readable again.
+  const user = new User({
     name: pending.name,
     nickname: pending.nickname || pending.name,
     email: pending.email,
     password: pending.password,
     relationshipStartDate: pending.relationshipStartDate || undefined,
     coupleCode,
-    connectionPassword,
     isVerified: true,
   });
+  await user.setConnectionPassword(connectionPassword);
+  await user.save();
 
   await Presence.create({ userId: user._id });
   await PendingRegistration.deleteOne({ email: pendingEmail.toLowerCase() });
@@ -148,7 +157,11 @@ exports.completeRegistration = async (req, res) => {
       user: {
         _id: user._id, name: user.name, nickname: user.nickname,
         email: user.email, profilePhoto: user.profilePhoto,
-        coupleCode: user.coupleCode, connectionPassword: user.connectionPassword,
+        coupleCode: user.coupleCode,
+        // Plaintext is shown ONCE here, at creation. Only the hash is stored, so
+        // no later response can return it — regenerate to get a new one.
+        connectionPassword,
+        connectionPasswordShowOnce: true,
         isConnected: user.isConnected,
       },
     },
@@ -181,7 +194,10 @@ exports.login = async (req, res) => {
       user: {
         _id: user._id, name: user.name, nickname: user.nickname,
         email: user.email, profilePhoto: user.profilePhoto,
-        coupleCode: user.coupleCode, connectionPassword: user.connectionPassword,
+        coupleCode: user.coupleCode,
+        // Never returned on login — only the hash is stored. The app shows the
+        // couple code (an identifier) and offers "Regenerate" for a new password.
+        hasConnectionPassword: !!(user.connectionPasswordHash || user.connectionPassword),
         isConnected: user.isConnected, partnerId: user.partnerId,
         relationshipId: user.relationshipId,
       },
@@ -258,16 +274,22 @@ exports.regenerateCodes = async (req, res) => {
   while (await User.findOne({ coupleCode, _id: { $ne: req.user._id } }));
 
   const connectionPassword = generateConnectionPassword();
-  const user = await User.findByIdAndUpdate(
-    req.user._id,
-    { coupleCode, connectionPassword },
-    { new: true }
-  ).select('-password');
+
+  const user = await User.findById(req.user._id).select('-password');
+  user.coupleCode = coupleCode;
+  await user.setConnectionPassword(connectionPassword);
+  // Regenerating invalidates any outstanding invite that carried the old code.
+  await user.save();
 
   res.json({
     success: true,
     message: 'New codes generated',
-    data: { coupleCode: user.coupleCode, connectionPassword: user.connectionPassword },
+    data: {
+      coupleCode: user.coupleCode,
+      // Shown once — only the hash is stored.
+      connectionPassword,
+      showOnce: true,
+    },
   });
 };
 

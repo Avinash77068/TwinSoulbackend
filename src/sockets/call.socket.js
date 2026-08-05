@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Presence = require('../models/Presence');
+const CallLog = require('../models/CallLog');
 const sendPushNotification = require('../utils/sendPushNotification');
 const callService = require('../services/call.service');
 const awardXP = require('../utils/awardXP');
@@ -10,6 +11,28 @@ const ringTimeouts = new Map();
 function clearRingTimeout(callId) {
   const t = ringTimeouts.get(callId);
   if (t) { clearTimeout(t); ringTimeouts.delete(callId); }
+}
+
+/**
+ * Persist a finished call. Fire-and-forget: a logging failure must never break
+ * call teardown, so errors are swallowed after being reported.
+ */
+function logCall(call, { outcome, endedBy = null, durationSeconds = 0 }) {
+  if (!call?.relationshipId) return;
+  CallLog.create({
+    relationshipId: call.relationshipId,
+    callerId: call.callerId,
+    calleeId: call.calleeId,
+    type: call.type || 'audio',
+    outcome,
+    startedAt: new Date(call.startedAt),
+    answeredAt: outcome === 'completed' && durationSeconds > 0
+      ? new Date(Date.now() - durationSeconds * 1000)
+      : null,
+    endedAt: new Date(),
+    durationSeconds,
+    endedBy,
+  }).catch((err) => console.error('[CallLog]', err.message));
 }
 
 module.exports = (io, socket) => {
@@ -41,7 +64,7 @@ module.exports = (io, socket) => {
         return;
       }
 
-      const callId = callService.createCall(userId, calleeId, type);
+      const callId = callService.createCall(userId, calleeId, type, caller.relationshipId);
       const callerName = caller.nickname || caller.name;
 
       // Confirm to caller with assigned callId
@@ -115,6 +138,7 @@ module.exports = (io, socket) => {
     if (!call) return;
     callService.removeCall(callId);
     io.to(`user:${call.callerId}`).emit('call:rejected', { callId });
+    logCall(call, { outcome: 'rejected', endedBy: userId });
   });
 
   // ── call:end ──────────────────────────────────────────────────────────────
@@ -133,16 +157,23 @@ module.exports = (io, socket) => {
     io.to(`user:${otherId}`).emit('call:ended', { callId, reason: 'hangup' });
     socket.emit('call:ended', { callId });
 
-    if (wasConnected) {
-      const durationSec = (Date.now() - startedAt) / 1000;
-      if (durationSec > 10) {
-        try {
-          const caller = await User.findById(call.callerId).select('relationshipId');
-          if (caller?.relationshipId) {
-            awardXP(caller.relationshipId, 15);
-          }
-        } catch (_) {}
-      }
+    const durationSec = wasConnected ? (Date.now() - startedAt) / 1000 : 0;
+
+    // Persist the call so total call time is reportable. Previously call state
+    // lived only in the in-memory registry, so "Call Hours" was impossible.
+    logCall(call, {
+      outcome: wasConnected ? 'completed' : 'missed',
+      endedBy: userId,
+      durationSeconds: Math.max(0, Math.round(durationSec)),
+    });
+
+    if (wasConnected && durationSec > 10) {
+      try {
+        const caller = await User.findById(call.callerId).select('relationshipId');
+        if (caller?.relationshipId) {
+          awardXP(caller.relationshipId, 'callEnd');
+        }
+      } catch (_) {}
     }
   });
 

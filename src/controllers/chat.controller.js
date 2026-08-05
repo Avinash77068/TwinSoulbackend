@@ -1,8 +1,8 @@
 const Message = require('../models/Message');
 const User = require('../models/User');
-const LoveTree = require('../models/LoveTree');
 const TimelineEvent = require('../models/TimelineEvent');
 const awardXP = require('../utils/awardXP');
+const awardTreePoints = require('../utils/awardTreePoints');
 const { getIo } = require('../config/socketInstance');
 
 const requireRelationship = (req, res) => {
@@ -12,11 +12,6 @@ const requireRelationship = (req, res) => {
   }
   return true;
 };
-
-const CHAT_STAGES = [
-  { name: 'seed', min: 0 }, { name: 'plant', min: 50 }, { name: 'tree', min: 200 },
-  { name: 'blooming', min: 500 }, { name: 'golden', min: 1000 }, { name: 'legendary', min: 2000 },
-];
 
 const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
@@ -40,19 +35,6 @@ exports.updateBubbleColor = async (req, res) => {
   }
 
   res.json({ success: true, data: { color } });
-};
-
-const addLoveTreePoints = async (relationshipId, points, field) => {
-  const tree = await LoveTree.findOne({ relationshipId });
-  if (!tree) return;
-  // Heal legacy documents that may have undefined/NaN numeric fields
-  tree[field] = (Number(tree[field]) || 0) + points;
-  tree.points = (Number(tree.points) || 0) + points;
-  // Bug fix: always fall back to CHAT_STAGES[0] so stage.name never throws
-  const stage = CHAT_STAGES.filter(s => tree.points >= s.min).pop() || CHAT_STAGES[0];
-  tree.stage = stage.name;
-  tree.lastWatered = new Date();
-  await tree.save();
 };
 
 exports.getMessages = async (req, res) => {
@@ -115,8 +97,9 @@ const createAndPersistMessage = async (user, { content, type = 'text', mediaUrl 
     });
   }
 
-  await addLoveTreePoints(user.relationshipId, 1, 'chatPoints');
-  awardXP(user.relationshipId, 2); // +2 XP per message
+  // Point/XP values and daily caps live in constants/progression.js
+  await awardTreePoints(user.relationshipId, 'message');
+  awardXP(user.relationshipId, 'message');
   await message.populate('senderId', 'name nickname profilePhoto bubbleColor');
   return message;
 };

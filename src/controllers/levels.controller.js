@@ -1,4 +1,6 @@
 const RelationshipLevel = require('../models/RelationshipLevel');
+const awardXP = require('../utils/awardXP');
+const { getTitle, XP_ACTIONS, LEVEL_TITLES } = require('../constants/progression');
 
 const requireRelationship = (req, res) => {
   if (!req.user.relationshipId) {
@@ -6,17 +8,6 @@ const requireRelationship = (req, res) => {
     return false;
   }
   return true;
-};
-
-const LEVEL_TITLES = {
-  1: 'New Sparks ✨', 5: 'Close Hearts ❤️', 10: 'Soulmates 💞',
-  25: 'Forever Partners 👑', 50: 'Legendary Couple 🌟',
-};
-
-const getTitle = (level) => {
-  const keys = Object.keys(LEVEL_TITLES).map(Number).sort((a, b) => b - a);
-  for (const k of keys) if (level >= k) return LEVEL_TITLES[k];
-  return LEVEL_TITLES[1];
 };
 
 exports.getLevel = async (req, res) => {
@@ -31,27 +22,48 @@ exports.getLevel = async (req, res) => {
       xp: lvl.xp,
       xpToNext: lvl.xpToNext,
       title: getTitle(lvl.level),
-      progressPercent: Math.round((lvl.xp / lvl.xpToNext) * 100),
+      progressPercent: lvl.xpToNext > 0
+        ? Math.max(0, Math.min(100, Math.round((lvl.xp / lvl.xpToNext) * 100)))
+        : 0,
       history: lvl.history,
+      titles: LEVEL_TITLES,
     },
   });
 };
 
+/**
+ * POST /levels/add-xp
+ *
+ * Body: { action: string }  — one of XP_ACTIONS
+ *
+ * The client names an ACTION; the server decides the XP value and enforces a
+ * daily cap. Previously this accepted an arbitrary client `xp` value, so any
+ * level could be reached with a single crafted request.
+ */
 exports.addXP = async (req, res) => {
   if (!requireRelationship(req, res)) return;
-  const { xp = 10 } = req.body;
 
-  let lvl = await RelationshipLevel.findOne({ relationshipId: req.user.relationshipId });
-  if (!lvl) lvl = await RelationshipLevel.create({ relationshipId: req.user.relationshipId });
+  const body = req.body || {};
+  const { action } = body;
 
-  lvl.xp += xp;
-  while (lvl.xp >= lvl.xpToNext) {
-    lvl.xp -= lvl.xpToNext;
-    lvl.level += 1;
-    lvl.xpToNext = Math.floor(100 * Math.pow(1.2, lvl.level - 1));
-    lvl.history.push({ level: lvl.level, title: getTitle(lvl.level), achievedAt: new Date() });
+  if (!action || !XP_ACTIONS[action]) {
+    return res.status(400).json({
+      success: false,
+      message: `action must be one of: ${Object.keys(XP_ACTIONS).join(', ')}`,
+    });
   }
-  await lvl.save();
 
-  res.json({ success: true, message: 'XP added', data: { level: lvl.level, xp: lvl.xp, xpToNext: lvl.xpToNext, title: getTitle(lvl.level) } });
+  await awardXP(req.user.relationshipId, action);
+
+  const lvl = await RelationshipLevel.findOne({ relationshipId: req.user.relationshipId });
+  res.json({
+    success: true,
+    message: 'XP added',
+    data: {
+      level: lvl.level,
+      xp: lvl.xp,
+      xpToNext: lvl.xpToNext,
+      title: getTitle(lvl.level),
+    },
+  });
 };

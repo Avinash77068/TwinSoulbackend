@@ -15,7 +15,6 @@ const helmet = require('helmet');
 const compression = require('compression');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
-const cron = require('node-cron');
 const connectDB = require('./src/config/db');
 const { errorHandler, notFound } = require('./src/middleware/errorHandler');
 
@@ -70,8 +69,18 @@ const apiLimiter = rateLimit({
   message: { success: false, message: 'Too many requests' },
 });
 
+// Connecting is brute-forceable (couple code + numeric password), so it gets the
+// strict limiter rather than the general one.
+const connectLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { success: false, message: 'Too many connection attempts, try again later' },
+});
+
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/relationship/connect', connectLimiter);
+app.use('/api/invite', connectLimiter);
 app.use('/api', apiLimiter);
 
 // ── Routes ────────────────────────────────────────────────────────────────────
@@ -81,6 +90,8 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/auth', require('./src/routes/auth.routes'));
 app.use('/api/relationship', require('./src/routes/relationship.routes'));
+app.use('/api/invite', require('./src/routes/invite.routes'));
+app.use('/api/archive', require('./src/routes/archive.routes'));
 app.use('/api/chat', require('./src/routes/chat.routes'));
 app.use('/api/music', require('./src/routes/music.routes'));
 app.use('/api/photos', require('./src/routes/photos.routes'));
@@ -104,53 +115,27 @@ app.use('/api/feedback', require('./src/routes/feedback.routes'));
 app.use('/api/goals', require('./src/routes/goals.routes'));
 app.use('/api/legal', require('./src/routes/legal.routes'));
 
+// ── Invite links ─────────────────────────────────────────────────────────────
+// Web fallback for https://<host>/i/<token>. App Links / Universal Links open
+// the app directly; this page is what someone without the app installed sees,
+// and it carries the token through to the store so the invite survives install.
+app.use('/', require('./src/routes/inviteLanding.routes'));
+
+// Association files that make App Links / Universal Links verify.
+app.get('/.well-known/assetlinks.json', (req, res) => {
+  res.type('application/json').send(require('./src/config/appLinks').assetLinks());
+});
+app.get('/.well-known/apple-app-site-association', (req, res) => {
+  res.type('application/json').send(require('./src/config/appLinks').appleAppSiteAssociation());
+});
+
 app.use(notFound);
 app.use(errorHandler);
 
-// ── Cron: deliver scheduled messages ─────────────────────────────────────────
-cron.schedule('* * * * *', async () => {
-  try {
-    const ScheduledMessage = require('./src/models/ScheduledMessage');
-    const Message = require('./src/models/Message');
-    const pending = await ScheduledMessage.find({
-      scheduledAt: { $lte: new Date() },
-      isDelivered: false,
-      isCancelled: false,
-    });
-    for (const sm of pending) {
-      await Message.create({
-        relationshipId: sm.relationshipId,
-        senderId: sm.senderId,
-        content: sm.content,
-        type: sm.type,
-        mediaUrl: sm.mediaUrl,
-      });
-      sm.isDelivered = true;
-      sm.deliveredAt = new Date();
-      await sm.save();
-      io.to(`relationship:${sm.relationshipId}`).emit('message:new', { content: sm.content, type: 'scheduled' });
-    }
-    if (pending.length > 0) console.log(`[Cron] Delivered ${pending.length} scheduled message(s)`);
-  } catch (err) {
-    console.error('[Cron] Scheduled messages error:', err.message);
-  }
-});
-
-// ── Cron: mark users offline after 2 min no heartbeat ────────────────────────
-// Client sends presence:heartbeat every 60 s so active users always have a
-// recent heartbeat.  2-minute cutoff gives a generous buffer for reconnects.
-cron.schedule('*/2 * * * *', async () => {
-  try {
-    const Presence = require('./src/models/Presence');
-    const cutoff = new Date(Date.now() - 2 * 60 * 1000);
-    await Presence.updateMany(
-      { isOnline: true, lastHeartbeat: { $lt: cutoff } },
-      { isOnline: false, lastSeen: new Date() }
-    );
-  } catch (err) {
-    console.error('[Cron] Presence error:', err.message);
-  }
-});
+// ── Scheduled jobs ───────────────────────────────────────────────────────────
+// All jobs run behind a Mongo advisory lock (see src/jobs/index.js) so a second
+// instance cannot double-deliver messages or double-send anniversary pushes.
+require('./src/jobs').registerJobs(io);
 
 const PORT = process.env.PORT || 8000;
 server.listen(PORT, () => console.log(`SoulSync server running on port ${PORT} ❤️`));

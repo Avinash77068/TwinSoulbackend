@@ -1,11 +1,16 @@
 const router = require('express').Router();
 const { protect } = require('../middleware/auth');
+const { requireRelationshipState } = require('../middleware/relationshipState');
 const callService = require('../services/call.service');
 const { getIo } = require('../config/socketInstance');
 
+// Calling requires a live partner. The call screens were previously reachable
+// with no relationship at all and would hit these endpoints regardless.
+const active = requireRelationshipState(['active']);
+
 // GET /api/calls/ice-servers
 // Returns ICE server config. Credentials stay in .env — never shipped in the app bundle.
-router.get('/ice-servers', protect, (req, res) => {
+router.get('/ice-servers', protect, active, (req, res) => {
   const username   = process.env.TURN_USERNAME;
   const credential = process.env.TURN_CREDENTIAL;
 

@@ -1,9 +1,5 @@
 const mongoose = require('mongoose');
-
-const LEVEL_TITLES = {
-  1: 'New Sparks ✨', 5: 'Close Hearts ❤️', 10: 'Soulmates 💞',
-  25: 'Forever Partners 👑', 50: 'Legendary Couple 🌟',
-};
+const { getTitle } = require('../constants/progression');
 
 const levelSchema = new mongoose.Schema({
   relationshipId: { type: mongoose.Schema.Types.ObjectId, ref: 'Relationship', required: true, unique: true },
@@ -18,11 +14,7 @@ const levelSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 levelSchema.methods.getTitle = function () {
-  const levels = Object.keys(LEVEL_TITLES).map(Number).sort((a, b) => b - a);
-  for (const l of levels) {
-    if (this.level >= l) return LEVEL_TITLES[l];
-  }
-  return LEVEL_TITLES[1];
+  return getTitle(this.level);
 };
 
 module.exports = mongoose.model('RelationshipLevel', levelSchema);
