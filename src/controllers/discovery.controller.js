@@ -2,6 +2,7 @@ const User = require('../models/User');
 const InviteToken = require('../models/InviteToken');
 const relService = require('../services/relationship.service');
 const appConfig = require('../services/appConfig.service');
+const { getBlockedIds } = require('../utils/blocks');
 const { INVITE_EXPIRY_DAYS, INVITE_MAX_PER_DAY } = require('../constants/lifecycle');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -315,24 +316,3 @@ exports.updateMyDiscoverySettings = async (req, res) => {
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 const escapeRegex = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-/**
- * IDs to exclude because of a block in either direction.
- * The Block model may not exist yet (the BlockedUsers screen is currently UI
- * only), so this degrades to "no blocks" rather than failing the search.
- */
-const getBlockedIds = async (userId) => {
-  try {
-    const Block = require('../models/Block');
-    const rows = await Block.find({
-      $or: [{ blockerId: userId }, { blockedId: userId }],
-    })
-      .select('blockerId blockedId')
-      .lean();
-    return rows.map((r) =>
-      String(r.blockerId) === String(userId) ? r.blockedId : r.blockerId,
-    );
-  } catch {
-    return [];
-  }
-};

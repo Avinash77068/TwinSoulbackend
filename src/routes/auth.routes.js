@@ -7,6 +7,14 @@ router.post('/register', c.register);
 router.post('/verify-otp', c.verifyOtp);
 router.post('/complete-registration', c.completeRegistration);
 router.post('/login', c.login);
+
+// ── Forgot password ────────────────────────────────────────────────────────────
+// Public by necessity — the user cannot authenticate. Brute-force protection is
+// the strict rate limiter in server.js plus the per-account attempt counter and
+// resend cooldown in the controller.
+router.post('/forgot-password', c.forgotPassword);
+router.post('/verify-reset-otp', c.verifyResetOtp);
+router.post('/reset-password', c.resetPassword);
 router.get('/profile', protect, c.getProfile);
 router.put('/profile', protect, upload.single('profilePhoto'), handleR2Upload, c.updateProfile);
 router.post('/regenerate-codes', protect, c.regenerateCodes);

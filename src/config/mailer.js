@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { otpTemplate } = require('./emailTemplates');
+const { otpTemplate, passwordResetTemplate } = require('./emailTemplates');
 
 // Brevo transactional email API. Gmail SMTP silently blocked cloud/datacenter
 // IPs (Render's); Resend's free tier only sends to the account's own signup
@@ -29,41 +29,59 @@ const parseFrom = () => {
     : { name: 'SoulSync', email: raw.trim() };
 };
 
+/** Shared Brevo send. `label` only shapes the error message. */
+const send = async ({ to, name, subject, html, label = 'email' }) => {
+  if (!process.env.BREVO_API_KEY) {
+    throw new Error('Missing BREVO_API_KEY in environment — cannot send email');
+  }
+
+  try {
+    const { data } = await withTimeout(
+      axios.post(
+        'https://api.brevo.com/v3/smtp/email',
+        {
+          sender: parseFrom(),
+          to: [{ email: to, ...(name ? { name } : {}) }],
+          subject,
+          htmlContent: html,
+        },
+        {
+          headers: {
+            'api-key': process.env.BREVO_API_KEY,
+            'Content-Type': 'application/json',
+            accept: 'application/json',
+          },
+          timeout: MAIL_TIMEOUT_MS,
+        },
+      ),
+    );
+    return data;
+  } catch (err) {
+    // Brevo returns { code, message } — surface it instead of a bare 400.
+    const detail = err.response?.data?.message || err.message;
+    console.error('Brevo send failed:', err.response?.data || err.message);
+    throw new Error(`Failed to send ${label}: ${detail}`);
+  }
+};
+
 module.exports = {
-  sendOtpEmail: async (to, otp, name) => {
-    if (!process.env.BREVO_API_KEY) {
-      throw new Error('Missing BREVO_API_KEY in environment — cannot send email');
-    }
+  send,
 
-    const sender = parseFrom();
-    const html = otpTemplate(otp, name);
+  sendOtpEmail: (to, otp, name) =>
+    send({
+      to,
+      name,
+      subject: 'Your SoulSync OTP',
+      html: otpTemplate(otp, name),
+      label: 'OTP email',
+    }),
 
-    try {
-      const { data } = await withTimeout(
-        axios.post(
-          'https://api.brevo.com/v3/smtp/email',
-          {
-            sender,
-            to: [{ email: to, ...(name ? { name } : {}) }],
-            subject: 'Your SoulSync OTP',
-            htmlContent: html,
-          },
-          {
-            headers: {
-              'api-key': process.env.BREVO_API_KEY,
-              'Content-Type': 'application/json',
-              accept: 'application/json',
-            },
-            timeout: MAIL_TIMEOUT_MS,
-          },
-        ),
-      );
-      return data;
-    } catch (err) {
-      // Brevo returns { code, message } — surface it instead of a bare 400.
-      const detail = err.response?.data?.message || err.message;
-      console.error('Brevo send failed:', err.response?.data || err.message);
-      throw new Error(`Failed to send OTP email: ${detail}`);
-    }
-  },
+  sendPasswordResetEmail: (to, otp, name, ttlMinutes = 10) =>
+    send({
+      to,
+      name,
+      subject: 'Reset your SoulSync password',
+      html: passwordResetTemplate(otp, name, ttlMinutes),
+      label: 'password reset email',
+    }),
 };

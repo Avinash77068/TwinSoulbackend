@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const userMessageSchema = new mongoose.Schema({
   messageId: { type: mongoose.Schema.Types.ObjectId, ref: 'Message' },
@@ -19,14 +20,6 @@ const userSchema = new mongoose.Schema({
   profilePhoto: { type: String, default: '' },
   relationshipStartDate: { type: Date },
   coupleCode: { type: String, unique: true, sparse: true },
-  /**
-   * DEPRECATED as a stored secret. Historically held the 4-digit connection
-   * password in PLAINTEXT and was string-compared on connect (~9,000
-   * possibilities, no expiry, no attempt throttling). New writes go to
-   * `connectionPasswordHash`; this field is retained only so existing users can
-   * still connect and be lazily upgraded on first successful use.
-   * See scripts/migrateConnectionPassword.js.
-   */
   connectionPassword: { type: String },
   connectionPasswordHash: { type: String, default: null },
 
@@ -62,6 +55,11 @@ const userSchema = new mongoose.Schema({
   otp: { type: String },
   otpExpiry: { type: Date },
   isVerified: { type: Boolean, default: false },
+  resetOtpHash: { type: String, default: null },
+  resetOtpExpiry: { type: Date, default: null },
+  resetOtpAttempts: { type: Number, default: 0 },
+  resetOtpLastSentAt: { type: Date, default: null },
+  passwordChangedAt: { type: Date, default: null },
   lastSeen: { type: Date, default: Date.now },
   isOnline: { type: Boolean, default: false },
   fcmToken: { type: String, default: '' },
@@ -89,6 +87,14 @@ userSchema.index({ isPremium: 1, premiumUntil: 1 });
 userSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
   this.password = await bcrypt.hash(this.password, 12);
+  // Stamped here rather than at each call site so no password-changing path can
+  // forget it — `protect` uses this to invalidate tokens issued before the change.
+  // Skipped on create: a brand-new account has no prior sessions to end, and
+  // stamping it would risk invalidating the token issued in the same request.
+  if (!this.isNew) {
+    this.passwordChangedAt = new Date();
+    this.clearResetOtp();
+  }
 });
 userSchema.methods.hasPremium = function () {
   if (!this.isPremium) return false;
@@ -150,4 +156,77 @@ userSchema.methods.verifyConnectionPassword = async function (candidate) {
   return false;
 };
 
+// ── Password reset ───────────────────────────────────────────────────────────
+
+const RESET_OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const RESET_OTP_MAX_ATTEMPTS = 5;
+
+/** SHA-256 of a reset code. Fast by design — the code is short-lived and rate-limited. */
+const hashResetOtp = (otp) =>
+  crypto.createHash('sha256').update(String(otp)).digest('hex');
+
+/** Store a freshly generated reset code (hashed) and reset the attempt counter. */
+userSchema.methods.setResetOtp = function (otp) {
+  this.resetOtpHash = hashResetOtp(otp);
+  this.resetOtpExpiry = new Date(Date.now() + RESET_OTP_TTL_MS);
+  this.resetOtpAttempts = 0;
+  this.resetOtpLastSentAt = new Date();
+  return this.resetOtpHash;
+};
+
+/**
+ * Verify a reset code.
+ *
+ * Returns { ok, reason } rather than a bare boolean so the caller can distinguish
+ * expiry from a wrong code from too many attempts. Comparison is constant-time to
+ * avoid leaking how much of the code matched.
+ *
+ * NOTE: the caller must `save()` — this mutates the attempt counter but does not
+ * persist, so a single failed guess is one write, not two.
+ */
+userSchema.methods.verifyResetOtp = function (candidate) {
+  if (!this.resetOtpHash || !this.resetOtpExpiry) {
+    return { ok: false, reason: 'not_requested' };
+  }
+  if (this.resetOtpExpiry < new Date()) {
+    return { ok: false, reason: 'expired' };
+  }
+  if ((this.resetOtpAttempts || 0) >= RESET_OTP_MAX_ATTEMPTS) {
+    return { ok: false, reason: 'too_many_attempts' };
+  }
+
+  const given = hashResetOtp(String(candidate ?? ''));
+  const a = Buffer.from(given, 'hex');
+  const b = Buffer.from(this.resetOtpHash, 'hex');
+  const match = a.length === b.length && crypto.timingSafeEqual(a, b);
+
+  if (!match) {
+    this.resetOtpAttempts = (this.resetOtpAttempts || 0) + 1;
+    const left = Math.max(0, RESET_OTP_MAX_ATTEMPTS - this.resetOtpAttempts);
+    return { ok: false, reason: 'invalid', attemptsLeft: left };
+  }
+  return { ok: true };
+};
+
+/** Clear reset state. Called after a successful reset, and on password change. */
+userSchema.methods.clearResetOtp = function () {
+  this.resetOtpHash = null;
+  this.resetOtpExpiry = null;
+  this.resetOtpAttempts = 0;
+};
+
+/**
+ * True when a JWT issued at `iat` (seconds) predates the last password change,
+ * i.e. the token belongs to a session that a reset should have ended.
+ */
+userSchema.methods.isTokenStale = function (iatSeconds) {
+  if (!this.passwordChangedAt || !iatSeconds) return false;
+  // Allow 1s of slack: the token is signed a moment before passwordChangedAt is
+  // written, and second-level `iat` rounding can otherwise invalidate the very
+  // token we just issued.
+  return Math.floor(new Date(this.passwordChangedAt).getTime() / 1000) - 1 > iatSeconds;
+};
+
 module.exports = mongoose.model('User', userSchema);
+module.exports.RESET_OTP_TTL_MS = RESET_OTP_TTL_MS;
+module.exports.RESET_OTP_MAX_ATTEMPTS = RESET_OTP_MAX_ATTEMPTS;

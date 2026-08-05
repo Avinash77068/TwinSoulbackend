@@ -79,6 +79,12 @@ const connectLimiter = rateLimit({
 
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+// Password reset is unauthenticated and guesses a 6-digit code, so it gets the
+// strict limiter. The controller additionally caps attempts per account and
+// enforces a resend cooldown, so a rotating-IP attacker gains nothing.
+app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/verify-reset-otp', authLimiter);
+app.use('/api/auth/reset-password', authLimiter);
 app.use('/api/relationship/connect', connectLimiter);
 app.use('/api/invite', connectLimiter);
 app.use('/api/discover/interest', connectLimiter);

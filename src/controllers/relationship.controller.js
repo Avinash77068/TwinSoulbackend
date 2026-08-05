@@ -9,6 +9,7 @@ const Message = require('../models/Message');
 const Photo = require('../models/Photo');
 const relService = require('../services/relationship.service');
 const statsService = require('../services/stats.service');
+const { isBlockedBetween } = require('../utils/blocks');
 const { resolveStageInfo, TREE_STAGES } = require('../constants/progression');
 const {
   GRACE_PERIOD_DAYS,
@@ -88,32 +89,47 @@ exports.declineConnection = async (req, res) => {
 };
 
 /**
- * POST /connect  — couple-code fallback.
+ * POST /connect  — connect by couple code.
  *
- * Retained for users who share a code verbally, but invite links (POST /api/invite)
- * are now the primary path. Password comparison is delegated to the User model so
- * hashed and legacy-plaintext values both work during migration.
+ * The connection password is NO LONGER REQUIRED. The code alone is enough to send
+ * a *request*; safety comes from the recipient's explicit approval, not from a
+ * shared secret. The old 4-digit password added real friction (it had to be read
+ * aloud alongside the code) while providing very little: ~9,000 possibilities,
+ * stored in plaintext, never expiring, with no attempt throttling.
+ *
+ * Brute-force resistance now rests on:
+ *   - the code space: 6 chars from a 32-char alphabet ≈ 1 billion combinations
+ *   - the strict rate limiter on this route (see server.js)
+ *   - the fact that a guessed code yields only a request the recipient must accept
+ *
+ * A `connectionPassword` in the body is accepted and ignored, so older app builds
+ * that still send it keep working.
  */
 exports.connectWithCode = async (req, res) => {
-  const { coupleCode, connectionPassword } = req.body || {};
-  if (!coupleCode || !connectionPassword) {
-    return res.status(400).json({ success: false, message: 'Couple code and password required' });
+  const { coupleCode } = req.body || {};
+  if (!coupleCode) {
+    return res.status(400).json({ success: false, message: 'Couple code required' });
   }
 
-  const partner = await User.findOne({ coupleCode: String(coupleCode).trim().toUpperCase() });
-  // Uniform failure for unknown code vs wrong password — prevents code enumeration.
-  const badCreds = () =>
-    res.status(401).json({ success: false, message: 'Invalid couple code or password' });
+  const code = String(coupleCode).trim().toUpperCase();
+  if (!/^[A-Z0-9]{4,12}$/.test(code)) {
+    return res.status(400).json({ success: false, message: 'Invalid couple code' });
+  }
 
-  if (!partner) return badCreds();
+  const partner = await User.findOne({ coupleCode: code });
+  if (!partner) {
+    return res.status(404).json({ success: false, message: 'Invalid couple code' });
+  }
   if (partner._id.toString() === req.user._id.toString()) {
     return res.status(400).json({ success: false, message: 'Cannot connect with yourself' });
   }
 
-  const ok = typeof partner.verifyConnectionPassword === 'function'
-    ? await partner.verifyConnectionPassword(connectionPassword)
-    : partner.connectionPassword === connectionPassword;
-  if (!ok) return badCreds();
+  // Matters more now that a code alone is enough to request: without this, a
+  // blocked person could simply re-request. Reported as an invalid code so the
+  // block itself is not disclosed.
+  if (await isBlockedBetween(req.user._id, partner._id)) {
+    return res.status(404).json({ success: false, message: 'Invalid couple code' });
+  }
 
   const [myBlocking, theirBlocking] = await Promise.all([
     relService.findBlockingRelationship(req.user._id),
