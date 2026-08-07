@@ -408,11 +408,56 @@ exports.favoriteMessage = async (req, res) => {
   res.json({ success: true, message: msg.isFavorite ? 'Added to favorites' : 'Removed from favorites' });
 };
 
+/**
+ * PUT /chat/messages/delivered
+ *
+ * The recipient reporting "my device has these", which is what turns one tick
+ * into two. Separate from markRead on purpose: arriving and being looked at are
+ * different events, and collapsing them would paint messages blue the moment
+ * they landed.
+ *
+ * Needed alongside the socket receipt because that receipt is live-only. If the
+ * sender was offline when it fired, or the message had not been persisted yet,
+ * nothing recorded it and the tick would revert on the next reload.
+ */
+exports.markDelivered = async (req, res) => {
+  if (!requireRelationship(req, res)) return;
+  const ids = Array.isArray(req.body?.clientMessageIds)
+    ? req.body.clientMessageIds.filter(id => typeof id === 'string').slice(0, 500)
+    : [];
+
+  // Scoped to the PARTNER's messages: a user can only report delivery of what
+  // was sent TO them, never flip ticks on their own outgoing messages.
+  const filter = {
+    relationshipId: req.user.relationshipId,
+    senderId: { $ne: req.user._id },
+    isDelivered: false,
+  };
+  if (ids.length) filter.clientMessageId = { $in: ids };
+
+  const result = await Message.updateMany(filter, { isDelivered: true });
+
+  const io = getIo();
+  if (io && result.modifiedCount > 0) {
+    // To the partner only — echoing to the reporter would just bounce back.
+    io.to(`user:${req.user.partnerId}`).emit('message:delivered', {
+      clientMessageIds: ids,
+      deliveredAt: new Date().toISOString(),
+    });
+  }
+
+  res.json({ success: true, data: { delivered: result.modifiedCount } });
+};
+
 exports.markRead = async (req, res) => {
   if (!requireRelationship(req, res)) return;
+  // isDelivered is set alongside isRead: you cannot read what was never
+  // delivered, and without this a message read straight from a cold start would
+  // be flagged read but not delivered, which renders as blue ticks over a
+  // "not delivered" state.
   await Message.updateMany(
     { relationshipId: req.user.relationshipId, senderId: { $ne: req.user._id }, isRead: false },
-    { isRead: true }
+    { isRead: true, isDelivered: true }
   );
 
   const io = getIo();

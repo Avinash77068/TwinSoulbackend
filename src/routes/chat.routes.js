@@ -10,6 +10,7 @@ const c = require('../controllers/chat.controller');
 
 router.get('/messages', protect, active, c.getMessages);
 router.put('/messages/read', protect, active, c.markRead);
+router.put('/messages/delivered', protect, active, c.markDelivered);
 router.put('/messages/:id/pin', protect, active, c.pinMessage);
 router.delete('/messages/clear', protect, active, c.clearMessages);
 router.delete('/messages/:id', protect, active, c.deleteMessage);
