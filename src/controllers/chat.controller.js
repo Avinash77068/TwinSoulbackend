@@ -126,9 +126,9 @@ exports.sendMessage = async (req, res) => {
 
   const io = getIo();
   if (io) {
-    const room = `relationship:${req.user.relationshipId}`;
-    console.log(`[Chat] Emitting message:new to room: ${room} | messageId: ${message._id}`);
-    io.to(room).emit('message:new', message);
+    const target = `user:${req.user.partnerId}`;
+    console.log(`[Chat] Emitting message:new to ${target} | messageId: ${message._id}`);
+    io.to(target).emit('message:new', message);
   } else {
     console.warn(`[Chat] Socket IO not available, message:new not emitted`);
   }
@@ -167,8 +167,11 @@ exports.bulkSyncMessages = async (req, res) => {
 
   const io = getIo();
   if (io) {
-    const room = `relationship:${req.user.relationshipId}`;
-    synced.forEach(s => { if (s.message) io.to(room).emit('message:new', s.message); });
+    // Partner-only, for the same reason as sendMessage above — and it matters
+    // most here: this is the offline catch-up path, so every message in the
+    // batch is already on the sender's screen awaiting tempId reconciliation.
+    const target = `user:${req.user.partnerId}`;
+    synced.forEach(s => { if (s.message) io.to(target).emit('message:new', s.message); });
   }
 
   res.json({ success: true, data: { synced } });
