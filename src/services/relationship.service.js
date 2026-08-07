@@ -99,7 +99,9 @@ const notifyUser = async (userId, { event, socketPayload, title, body, data = {}
       title,
       body: body || '',
       data,
-    }).catch(() => {});
+    }).catch((err) => {
+      console.error(`[notifyUser] could not store '${data.type || 'relationship'}' notification for ${userId}:`, err.message);
+    });
 
     const user = await User.findById(userId).select('fcmToken pushNotificationsEnabled').lean();
     if (user?.fcmToken && user.pushNotificationsEnabled !== false) {

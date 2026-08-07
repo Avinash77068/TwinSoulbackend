@@ -6,7 +6,9 @@ const notificationSchema = new mongoose.Schema({
   type: {
     type: String,
     enum: ['message', 'mood', 'photo', 'diary', 'scheduled', 'capsule', 'milestone',
-      'anniversary', 'goodbye', 'music', 'game', 'midnight', 'ai', 'connection'],
+      'anniversary', 'goodbye', 'music', 'game', 'midnight', 'ai', 'connection',
+      'relationship', 'connection_approved', 'relationship_ended', 'discover_invite',
+      'archive_expiring', 'custom_question', 'wheel_spin'],
     required: true,
   },
   title: { type: String, required: true },
