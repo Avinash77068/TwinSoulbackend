@@ -11,7 +11,11 @@ const messageSchema = new mongoose.Schema({
   clientMessageId: { type: String, default: null },
   clientSentAt: { type: Date, default: null },
   content: { type: String, default: '' },
-  type: { type: String, enum: ['text', 'voice', 'photo', 'note'], default: 'text' },
+  type: {
+    type: String,
+    enum: ['text', 'voice', 'photo', 'image', 'note', 'sticker'],
+    default: 'text',
+  },
   mediaUrl: { type: String, default: '' },
   replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
   reactions: [reactionSchema],

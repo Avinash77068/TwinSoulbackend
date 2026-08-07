@@ -2,11 +2,21 @@ const multer = require('multer');
 const path = require('path');
 const { uploadToCloud } = require('../config/cloudinary');
 
+const IMAGE_EXT = /jpeg|jpg|png|gif|webp|heic|heif/;
+
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024; // 10 MB
+
+/**
+ * Images only — video is not a supported attachment type.
+ *
+ * The mimetype decides and the extension is only a fallback. Requiring BOTH to
+ * match, as this once did, rejected valid camera-roll files: iOS supplies
+ * .HEIC and some Android pickers supply no extension at all.
+ */
 const fileFilter = (req, file, cb) => {
-  const allowed = /jpeg|jpg|png|gif|webp/;
-  const ext = allowed.test(path.extname(file.originalname).toLowerCase());
-  const mime = allowed.test(file.mimetype);
-  if (ext && mime) return cb(null, true);
+  const ext = path.extname(file.originalname).toLowerCase();
+  const mime = String(file.mimetype || '');
+  if (mime.startsWith('image/') || (ext && IMAGE_EXT.test(ext))) return cb(null, true);
   cb(new Error('Only image files are allowed'));
 };
 
@@ -14,7 +24,7 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({
   storage: multer.memoryStorage(),
   fileFilter,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: MAX_IMAGE_BYTES },
 });
 
 /**
@@ -53,4 +63,10 @@ const handleMultiCloudUpload = async (req, res, next) => {
   }
 };
 
-module.exports = { upload, handleCloudUpload, handleR2Upload, handleMultiCloudUpload };
+module.exports = {
+  upload,
+  handleCloudUpload,
+  handleR2Upload,
+  handleMultiCloudUpload,
+  MAX_IMAGE_BYTES,
+};

@@ -112,20 +112,43 @@ exports.createAndPersistMessage = createAndPersistMessage;
 
 exports.sendMessage = async (req, res) => {
   if (!requireRelationship(req, res)) return;
-  const { content, type = 'text', replyTo, isSecret = false } = req.body;
-  console.log(`[Chat] sendMessage | user: ${req.user._id} | type: ${type} | isSecret: ${isSecret} | content: "${content?.slice(0, 50)}"`);
+  const { content, type = 'text', replyTo, isSecret = false, clientMessageId, clientSentAt } = req.body;
+  console.log(`[Chat] sendMessage | user: ${req.user._id} | type: ${type} | file: ${req.file ? req.file.mimetype : 'none'}`);
 
   if (!content && !req.file) {
     console.log(`[Chat] sendMessage failed | no content and no file`);
     return res.status(400).json({ success: false, message: 'Content or file required' });
   }
 
+  // A retried upload must not create a second message. Returning the existing
+  // one keeps the client's reconciliation identical to the first-try path.
+  if (clientMessageId) {
+    const existing = await Message.findOne({
+      relationshipId: req.user.relationshipId,
+      clientMessageId,
+    }).populate('senderId', 'name nickname profilePhoto bubbleColor');
+    if (existing) {
+      console.log(`[Chat] sendMessage duplicate ${clientMessageId} — returning stored message`);
+      return res.status(200).json({
+        success: true,
+        message: 'Message already sent',
+        data: { messageId: existing._id, message: existing },
+      });
+    }
+  }
+
+  // Any upload is an image — the filter admits nothing else — so the type comes
+  // from whether a file is present, not from the client's label.
+  const resolvedType = req.file ? 'image' : type;
+
   const message = await createAndPersistMessage(req.user, {
     content,
-    type,
+    type: resolvedType,
     mediaUrl: req.file ? req.file.cloudUrl : '',
     replyTo,
     isSecret,
+    clientMessageId: clientMessageId || null,
+    clientSentAt: clientSentAt || new Date(),
   });
   console.log(`[Chat] Message saved to DB | messageId: ${message._id}`);
 
