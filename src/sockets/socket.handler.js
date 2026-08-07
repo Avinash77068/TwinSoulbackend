@@ -3,7 +3,6 @@ const User = require('../models/User');
 const Presence = require('../models/Presence');
 const sendPushNotification = require('../utils/sendPushNotification');
 const callHandlers = require('./call.socket');
-const { createAndPersistMessage } = require('../controllers/chat.controller');
 
 // Guard: verify client-supplied relationshipId matches the authenticated user's
 const ownsRelationship = (user, relationshipId) =>
@@ -47,58 +46,122 @@ module.exports = (io) => {
 
     // ── Chat ──────────────────────────────────────────────────────────────────
 
-    // Persists immediately (single fast DB write) so the message is never
-    // only-in-memory on the partner's side — the client never hits REST for
-    // this, it just emits and waits for the ack. `bulkSyncMessages` (REST) is
-    // only a fallback for messages queued while the socket was unavailable.
+    /**
+     * Real-time delivery ONLY — deliberately does not touch the database.
+     *
+     * Persistence is the REST bulk endpoint's job: the client batches messages
+     * in a local outbox and flushes them on a threshold/interval. That split is
+     * the whole point of the design — a chat message now costs one in-memory
+     * relay (sub-millisecond) instead of the five awaits createAndPersistMessage
+     * performs (insert, $push onto the sender, countDocuments, tree points, XP).
+     *
+     * The ack carries no server document, only the id the CLIENT minted. There
+     * is no server id to hand back yet, and the client does not need one: its
+     * own clientMessageId is the identity the bulk upsert reconciles on.
+     */
     socket.on('message:send', async (data, ack) => {
-      if (!ownsRelationship(user, data.relationshipId)) {
-        if (typeof ack === 'function') ack({ success: false, tempId: data?.tempId, error: 'Not authorized' });
-        return;
+      const reply = (payload) => { if (typeof ack === 'function') ack(payload); };
+      const clientMessageId = data?.clientMessageId;
+
+      if (!ownsRelationship(user, data?.relationshipId)) {
+        return reply({ success: false, clientMessageId, error: 'Not authorized' });
       }
-      const room = `relationship:${data.relationshipId}`;
-      let message;
-      try {
-        message = await createAndPersistMessage(user, {
-          content: data.content,
-          type: data.type || 'text',
-          replyTo: data.replyTo,
-          isSecret: data.isSecret,
-        });
-      } catch (err) {
-        console.error('[Socket] message:send persist failed:', err.message);
-        if (typeof ack === 'function') ack({ success: false, tempId: data?.tempId, error: err.message });
-        return;
+      if (!clientMessageId || typeof clientMessageId !== 'string') {
+        return reply({ success: false, clientMessageId, error: 'clientMessageId required' });
       }
 
-      if (typeof ack === 'function') ack({ success: true, tempId: data?.tempId, message });
-      socket.to(room).emit('message:new', message);
+      // Shaped like a persisted message so the receiver renders it with no
+      // special-casing, but marked unsynced: it exists only in memory on both
+      // devices until the sender's outbox flush stores it.
+      const relayed = {
+        clientMessageId,
+        _id: clientMessageId,
+        relationshipId: String(data.relationshipId),
+        senderId: {
+          _id: String(userId),
+          name: user.name,
+          nickname: user.nickname,
+          profilePhoto: user.profilePhoto,
+          bubbleColor: user.bubbleColor,
+        },
+        content: data.content || '',
+        type: data.type || 'text',
+        mediaUrl: data.mediaUrl || '',
+        replyTo: data.replyTo || null,
+        isSecret: !!data.isSecret,
+        reactions: [],
+        clientSentAt: data.clientSentAt || new Date().toISOString(),
+        createdAt: data.clientSentAt || new Date().toISOString(),
+        pendingSync: true,
+      };
 
-      try {
-        if (user?.partnerId) {
+      // Ack first, deliver second: the sender's "sent" tick should not wait on
+      // fan-out to the partner.
+      reply({ success: true, clientMessageId, deliveredAt: new Date().toISOString() });
+      socket.to(`relationship:${data.relationshipId}`).emit('message:new', relayed);
+
+      // Push only when the partner is not connected. Unchanged in intent, but
+      // now fire-and-forget so a slow FCM round trip cannot delay the relay.
+      (async () => {
+        try {
+          if (!user?.partnerId) return;
           const partnerPresence = await Presence.findOne({ userId: user.partnerId });
-          if (!partnerPresence?.isOnline) {
-            const partner = await User.findById(user.partnerId).select('fcmToken');
-            if (partner?.fcmToken) {
-              const senderName = user.nickname || user.name || 'Partner';
-              const messagePreview =
-                message.type === 'text'
-                  ? message.content?.slice(0, 100)
-                  : message.type === 'photo' ? '📷 Photo'
-                  : message.type === 'voice' ? '🎤 Voice message'
-                  : '💬 New message';
-              await sendPushNotification({
-                fcmToken: partner.fcmToken,
-                title: senderName,
-                body: messagePreview,
-                data: { type: 'message', relationshipId: String(data.relationshipId), senderId: String(userId) },
-              });
-            }
-          }
+          if (partnerPresence?.isOnline) return;
+          const partner = await User.findById(user.partnerId).select('fcmToken');
+          if (!partner?.fcmToken) return;
+          const preview =
+            relayed.type === 'text' ? relayed.content?.slice(0, 100)
+            : relayed.type === 'photo' ? '📷 Photo'
+            : relayed.type === 'voice' ? '🎤 Voice message'
+            : '💬 New message';
+          await sendPushNotification({
+            fcmToken: partner.fcmToken,
+            title: user.nickname || user.name || 'Partner',
+            body: preview,
+            data: { type: 'message', relationshipId: String(data.relationshipId), senderId: String(userId) },
+          });
+        } catch (err) {
+          console.error('[Socket] FCM send failed:', err.message);
         }
-      } catch (err) {
-        console.error('[Socket] FCM send failed:', err.message);
-      }
+      })();
+    });
+
+    /**
+     * Delivery receipt — the RECIPIENT's device confirming it holds the message.
+     *
+     * This is what separates "sent" (the server relayed it) from "delivered"
+     * (the other phone actually has it), the same distinction WhatsApp's one
+     * versus two ticks draws. Only the recipient can report it, so it has to
+     * come back up from their client rather than being inferred at the relay.
+     *
+     * Ids only — no content — so a receipt cannot be used to inject or alter a
+     * message, and it stays cheap enough to send per batch of arrivals.
+     */
+    socket.on('message:delivered', (data) => {
+      if (!ownsRelationship(user, data?.relationshipId)) return;
+      const ids = Array.isArray(data.clientMessageIds) ? data.clientMessageIds.filter(id => typeof id === 'string') : [];
+      if (!ids.length) return;
+      socket.to(`relationship:${data.relationshipId}`).emit('message:delivered', {
+        clientMessageIds: ids,
+        deliveredAt: new Date().toISOString(),
+      });
+    });
+
+    /**
+     * Read receipt for messages that are not yet in the database.
+     *
+     * The REST markRead endpoint covers persisted messages, but between relay
+     * and the sender's next bulk flush a message has no row to update — so the
+     * blue ticks would only appear after a sync. This carries the same signal
+     * live.
+     */
+    socket.on('message:read', (data) => {
+      if (!ownsRelationship(user, data?.relationshipId)) return;
+      const ids = Array.isArray(data.clientMessageIds) ? data.clientMessageIds.filter(id => typeof id === 'string') : [];
+      socket.to(`relationship:${data.relationshipId}`).emit('message:read', {
+        clientMessageIds: ids,
+        readAt: new Date().toISOString(),
+      });
     });
 
     socket.on('message:typing', (data) => {

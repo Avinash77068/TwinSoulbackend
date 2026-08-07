@@ -45,10 +45,13 @@ exports.getMessages = async (req, res) => {
   const query = { relationshipId: req.user.relationshipId, isDeleted: false };
   if (before) query.createdAt = { $lt: new Date(before) };
 
+  // Sorted by the SENDER's clock, falling back to server time for messages
+  // predating clientSentAt. A batch flushed late would otherwise be appended to
+  // the end of the thread instead of slotting back where it was typed.
   const messages = await Message.find(query)
     .populate('senderId', 'name nickname profilePhoto bubbleColor')
     .populate('replyTo')
-    .sort({ createdAt: -1 })
+    .sort({ clientSentAt: -1, createdAt: -1 })
     .skip((page - 1) * limit)
     .limit(Number(limit));
 
@@ -60,7 +63,7 @@ exports.getMessages = async (req, res) => {
 // Shared by the REST sendMessage controller (text+media), the `message:send`
 // socket handler (text, real-time path), and bulkSyncMessages (offline catch-up)
 // so the LoveTree/XP/first-message side effects live in exactly one place.
-const createAndPersistMessage = async (user, { content, type = 'text', mediaUrl = '', replyTo = null, isSecret = false }) => {
+const createAndPersistMessage = async (user, { content, type = 'text', mediaUrl = '', replyTo = null, isSecret = false, clientMessageId = null, clientSentAt = null }) => {
   const message = await Message.create({
     relationshipId: user.relationshipId,
     senderId: user._id,
@@ -69,6 +72,8 @@ const createAndPersistMessage = async (user, { content, type = 'text', mediaUrl 
     mediaUrl,
     replyTo: replyTo || null,
     isSecret,
+    clientMessageId,
+    clientSentAt: clientSentAt ? new Date(clientSentAt) : null,
   });
 
   await User.findByIdAndUpdate(user._id, {
@@ -137,44 +142,172 @@ exports.sendMessage = async (req, res) => {
   res.status(201).json({ success: true, message: 'Message sent', data: { messageId: message._id, message } });
 };
 
-// Fallback durability path: client calls this only when it has messages that
-// never made it out over the socket (was offline / ack timed out). Each item
-// is persisted individually via createAndPersistMessage so behaviour matches
-// the real-time path exactly; failures for one item don't block the rest.
+const BULK_MAX = 100;
+
+/**
+ * The ONLY durable write path for chat.
+ *
+ * The socket delivers messages in real time but stores nothing, so every
+ * message reaches the database through here, in batches the client flushes on a
+ * size threshold or a timer. Three properties matter:
+ *
+ *   Idempotent — a batch that timed out client-side is retried verbatim, so the
+ *     same clientMessageId will arrive again. One `bulkWrite` of upserts keyed
+ *     on (relationshipId, clientMessageId) makes the replay a no-op instead of
+ *     a duplicate, and the unique partial index enforces it even if two devices
+ *     flush the same outbox concurrently.
+ *
+ *   Ordered — `clientSentAt` comes from the sending device, so a batch stored
+ *     minutes late still sorts into its rightful place in the thread.
+ *
+ *   Partially failable — one bad item (bad type, missing id) must not cost the
+ *     other 99 their persistence, so items are validated up front and only the
+ *     rejects are reported back.
+ *
+ * The per-message side effects that used to live in createAndPersistMessage
+ * (tree points, XP, the first-message timeline event) are applied ONCE for the
+ * batch rather than per message — they were never meant to be a function of how
+ * the client happens to chunk its outbox.
+ */
 exports.bulkSyncMessages = async (req, res) => {
   if (!requireRelationship(req, res)) return;
   const { messages } = req.body;
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ success: false, message: 'messages array required' });
   }
+  if (messages.length > BULK_MAX) {
+    return res.status(413).json({
+      success: false,
+      message: `Too many messages in one batch (max ${BULK_MAX})`,
+    });
+  }
 
-  const batch = messages.slice(0, 50);
-  const synced = [];
-  for (const item of batch) {
-    try {
-      const message = await createAndPersistMessage(req.user, {
-        content: item.content,
-        type: item.type || 'text',
-        replyTo: item.replyTo,
-        isSecret: item.isSecret,
-      });
-      synced.push({ tempId: item.tempId, message });
-    } catch (err) {
-      console.error('[Chat] bulkSyncMessages item failed:', err.message);
-      synced.push({ tempId: item.tempId, error: err.message });
+  const relationshipId = req.user.relationshipId;
+  const VALID_TYPES = ['text', 'voice', 'photo', 'note'];
+
+  const rejected = [];
+  const accepted = [];
+  const seen = new Set();
+
+  for (const item of messages) {
+    const id = item?.clientMessageId;
+    if (!id || typeof id !== 'string') {
+      rejected.push({ clientMessageId: id ?? null, error: 'clientMessageId required' });
+      continue;
     }
+    // A batch that repeats an id within itself would make bulkWrite's upserts
+    // race against each other on the unique index.
+    if (seen.has(id)) continue;
+    seen.add(id);
+
+    const type = VALID_TYPES.includes(item.type) ? item.type : 'text';
+    if (!item.content && !item.mediaUrl) {
+      rejected.push({ clientMessageId: id, error: 'content or mediaUrl required' });
+      continue;
+    }
+    accepted.push({
+      clientMessageId: id,
+      relationshipId,
+      senderId: req.user._id,
+      content: item.content || '',
+      type,
+      mediaUrl: item.mediaUrl || '',
+      replyTo: item.replyTo || null,
+      isSecret: !!item.isSecret,
+      clientSentAt: item.clientSentAt ? new Date(item.clientSentAt) : new Date(),
+      // Receipts the sender collected while the message was still queued.
+      // Delivery is now something we learn from the recipient's device rather
+      // than assume, so this defaults to false instead of the schema's legacy
+      // `true` — otherwise every message would render two ticks on reload.
+      isDelivered: !!item.delivered,
+      isRead: !!item.read,
+    });
   }
 
+  if (!accepted.length) {
+    return res.json({ success: true, data: { synced: [], rejected, syncedCount: 0 } });
+  }
+
+  // $setOnInsert only: a replayed batch must never overwrite a message the user
+  // has since edited, reacted to, pinned or deleted.
+  let written = [];
+  try {
+    await Message.bulkWrite(
+      accepted.map((doc) => ({
+        updateOne: {
+          filter: { relationshipId, clientMessageId: doc.clientMessageId },
+          update: { $setOnInsert: doc },
+          upsert: true,
+        },
+      })),
+      { ordered: false },
+    );
+
+    written = await Message.find({
+      relationshipId,
+      clientMessageId: { $in: accepted.map((d) => d.clientMessageId) },
+    })
+      .populate('senderId', 'name nickname profilePhoto bubbleColor')
+      .populate('replyTo')
+      .lean();
+  } catch (err) {
+    // A duplicate-key error here means a concurrent flush already stored those
+    // ids — the desired end state either way, so re-read rather than fail.
+    if (err.code !== 11000) {
+      console.error('[Chat] bulkSyncMessages failed:', err.message);
+      return res.status(500).json({ success: false, message: 'Could not sync messages' });
+    }
+    written = await Message.find({
+      relationshipId,
+      clientMessageId: { $in: accepted.map((d) => d.clientMessageId) },
+    })
+      .populate('senderId', 'name nickname profilePhoto bubbleColor')
+      .populate('replyTo')
+      .lean();
+  }
+
+  // Only ids that were genuinely new this call should earn progression.
+  const freshCount = written.filter((m) => {
+    const age = Date.now() - new Date(m.createdAt).getTime();
+    return age < 60_000;
+  }).length;
+
+  if (freshCount > 0) {
+    const total = await Message.countDocuments({ relationshipId });
+    if (total === freshCount) {
+      await TimelineEvent.create({
+        relationshipId,
+        eventType: 'first_chat',
+        title: 'First Message 💌',
+        description: 'You sent your first message!',
+        eventDate: new Date(),
+        isAutoGenerated: true,
+      }).catch((err) => console.error('[Chat] first_chat timeline failed:', err.message));
+    }
+    // Awarded once per batch — the daily caps in constants/progression.js are
+    // what actually bound this, not the message count.
+    await awardTreePoints(relationshipId, 'message');
+    awardXP(relationshipId, 'message');
+  }
+
+  // Tell the partner these are now durable, so their copy can drop the
+  // "pending sync" marker the socket relay gave it.
   const io = getIo();
-  if (io) {
-    // Partner-only, for the same reason as sendMessage above — and it matters
-    // most here: this is the offline catch-up path, so every message in the
-    // batch is already on the sender's screen awaiting tempId reconciliation.
-    const target = `user:${req.user.partnerId}`;
-    synced.forEach(s => { if (s.message) io.to(target).emit('message:new', s.message); });
+  if (io && req.user.partnerId) {
+    io.to(`user:${req.user.partnerId}`).emit('message:synced', {
+      relationshipId: String(relationshipId),
+      messages: written,
+    });
   }
 
-  res.json({ success: true, data: { synced } });
+  res.json({
+    success: true,
+    data: {
+      synced: written.map((m) => ({ clientMessageId: m.clientMessageId, message: m })),
+      rejected,
+      syncedCount: written.length,
+    },
+  });
 };
 
 exports.deleteMessage = async (req, res) => {

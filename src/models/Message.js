@@ -8,6 +8,8 @@ const reactionSchema = new mongoose.Schema({
 const messageSchema = new mongoose.Schema({
   relationshipId: { type: mongoose.Schema.Types.ObjectId, ref: 'Relationship', required: true },
   senderId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  clientMessageId: { type: String, default: null },
+  clientSentAt: { type: Date, default: null },
   content: { type: String, default: '' },
   type: { type: String, enum: ['text', 'voice', 'photo', 'note'], default: 'text' },
   mediaUrl: { type: String, default: '' },
@@ -22,5 +24,12 @@ const messageSchema = new mongoose.Schema({
   scheduledAt: { type: Date, default: null },
   isDelivered: { type: Boolean, default: true },
 }, { timestamps: true });
+messageSchema.index(
+  { relationshipId: 1, clientMessageId: 1 },
+  { unique: true, partialFilterExpression: { clientMessageId: { $type: 'string' } } },
+);
+
+/** Thread reads: newest-first within a relationship, by device time. */
+messageSchema.index({ relationshipId: 1, clientSentAt: -1, createdAt: -1 });
 
 module.exports = mongoose.model('Message', messageSchema);
