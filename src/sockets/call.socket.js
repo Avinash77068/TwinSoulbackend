@@ -162,7 +162,7 @@ module.exports = (io, socket) => {
         io.to(`user:${calleeId}`).emit('call:missed', { callId, callerName, type });
 
         await notifyMissedCall({ call, callerName, type });
-      }, 3_000);
+      }, 45_000);
       ringTimeouts.set(callId, timeout);
       
       try {
