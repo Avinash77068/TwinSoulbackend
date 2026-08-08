@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Presence = require('../models/Presence');
 const CallLog = require('../models/CallLog');
+const Notification = require('../models/Notification');
 const sendPushNotification = require('../utils/sendPushNotification');
 const callService = require('../services/call.service');
 const awardXP = require('../utils/awardXP');
@@ -33,6 +34,61 @@ function logCall(call, { outcome, endedBy = null, durationSeconds = 0 }) {
     durationSeconds,
     endedBy,
   }).catch((err) => console.error('[CallLog]', err.message));
+}
+
+/**
+ * Tell both sides about a call that rang out.
+ *
+ * Two different messages, because the two sides need different things:
+ *   callee — "Missed call from X", plus a PUSH, since not answering usually
+ *            means they were away from the phone entirely
+ *   caller — "No answer", in-app only; they are holding the device and just
+ *            watched it fail, so a push would be noise
+ *
+ * Never throws: this runs inside a setTimeout with no caller to catch it, so an
+ * unhandled rejection here would take the process down.
+ */
+async function notifyMissedCall({ call, callerName, type }) {
+  const label = type === 'video' ? 'video call' : 'call';
+  try {
+    await Notification.create({
+      userId: call.calleeId,
+      relationshipId: call.relationshipId,
+      type: 'missed_call',
+      title: `Missed ${label}`,
+      body: `${callerName} tried to reach you`,
+      data: { type: 'missed_call', callType: type, callerId: String(call.callerId) },
+    });
+  } catch (err) {
+    console.error('[Call] missed_call notification failed:', err.message);
+  }
+
+  try {
+    await Notification.create({
+      userId: call.callerId,
+      relationshipId: call.relationshipId,
+      type: 'no_answer',
+      title: 'No answer',
+      body: `They didn't pick up your ${label}`,
+      data: { type: 'no_answer', callType: type, calleeId: String(call.calleeId) },
+    });
+  } catch (err) {
+    console.error('[Call] no_answer notification failed:', err.message);
+  }
+
+  try {
+    const callee = await User.findById(call.calleeId).select('fcmToken pushNotificationsEnabled');
+    if (callee?.fcmToken && callee.pushNotificationsEnabled !== false) {
+      await sendPushNotification({
+        fcmToken: callee.fcmToken,
+        title: `Missed ${label}`,
+        body: `${callerName} tried to reach you`,
+        data: { type: 'missed_call', callType: type, callerId: String(call.callerId) },
+      });
+    }
+  } catch (err) {
+    console.error('[Call] missed-call push failed:', err.message);
+  }
 }
 
 module.exports = (io, socket) => {
@@ -83,15 +139,29 @@ module.exports = (io, socket) => {
       // FIX: confirm delivery to caller
       socket.emit('call:ringing', { callId });
 
-      // FIX: 45-second ring timeout — server-enforced
+      /**
+       * 45-second ring timeout — server-enforced.
+       *
+       * An unanswered call used to end silently: nothing was written to
+       * CallLog, so it never appeared in call history, and neither side was
+       * told anything. The caller just watched "Calling…" disappear and the
+       * callee had no idea they had been called at all.
+       */
       const timeout = setTimeout(async () => {
-        const call = callService.getActiveCall(callId);
-        if (call && call.status === 'ringing') {
-          callService.removeCall(callId);
-          socket.emit('call:timeout', { callId });
-          io.to(`user:${calleeId}`).emit('call:ended', { callId, reason: 'timeout' });
-        }
         ringTimeouts.delete(callId);
+        const call = callService.getActiveCall(callId);
+        if (!call || call.status !== 'ringing') return;
+
+        callService.removeCall(callId);
+        logCall(call, { outcome: 'missed' });
+        io.to(`user:${userId}`).emit('call:timeout', { callId, reason: 'no_answer' });
+        // `call:ended` tears the call UI down (existing behaviour); `call:missed`
+        // carries the copy, and is separate so the callee is told WHY the
+        // ringing stopped instead of it just vanishing.
+        io.to(`user:${calleeId}`).emit('call:ended', { callId, reason: 'timeout' });
+        io.to(`user:${calleeId}`).emit('call:missed', { callId, callerName, type });
+
+        await notifyMissedCall({ call, callerName, type });
       }, 45_000);
       ringTimeouts.set(callId, timeout);
       
