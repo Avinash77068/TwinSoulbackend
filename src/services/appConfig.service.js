@@ -23,9 +23,6 @@ const envDefaults = () => ({
   discoveryEnabled: process.env.DISCOVERY_ENABLED !== 'false',
   discoveryRequiresPremium: process.env.DISCOVERY_REQUIRES_PREMIUM !== 'false',
   watchTogetherRequiresPremium: process.env.WATCH_TOGETHER_REQUIRES_PREMIUM !== 'false',
-  premiumUpiId: process.env.PREMIUM_UPI_ID || '',
-  premiumUpiPayeeName: process.env.PREMIUM_UPI_PAYEE_NAME || 'SoulSync',
-  premiumAmountInr: Number(process.env.PREMIUM_AMOUNT_INR) || 0,
   premiumPaymentUrl: process.env.PREMIUM_PAYMENT_URL || '',
   discoveryPageLimit: Number(process.env.DISCOVERY_PAGE_LIMIT) || 20,
 });

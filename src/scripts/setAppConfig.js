@@ -19,9 +19,9 @@ require('dotenv').config({ path: `${__dirname}/../../.env` });
 const mongoose = require('mongoose');
 const os = require('os');
 
-const BOOLEANS = ['allowDevPremium', 'discoveryEnabled', 'discoveryRequiresPremium', 'watchTogetherRequiresPremium'];
-const NUMBERS = ['defaultPremiumDays', 'discoveryPageLimit', 'premiumAmountInr'];
-const STRINGS = ['notes', 'premiumUpiId', 'premiumUpiPayeeName', 'premiumPaymentUrl'];
+const BOOLEANS = ['allowDevPremium', 'discoveryEnabled', 'discoveryRequiresPremium'];
+const NUMBERS = ['defaultPremiumDays', 'discoveryPageLimit'];
+const STRINGS = ['notes'];
 
 const argv = process.argv.slice(2);
 
@@ -69,18 +69,6 @@ Strings:  ${STRINGS.map((s) => '--' + s).join(' ')}
   --discoveryRequiresPremium true|false  false makes partner search free
   --defaultPremiumDays <n>               default grant length
   --discoveryPageLimit <n>               results per search page
-  --watchTogetherRequiresPremium t|f     false makes Watch Together free
-  --premiumUpiId <vpa>                   payee UPI ID, e.g. name@okhdfcbank
-  --premiumUpiPayeeName <name>           shown to the payer in their UPI app
-  --premiumAmountInr <n>                 fixed amount; omit to let payer type one
-  --premiumPaymentUrl <url>              overrides the generated UPI link entirely
-                                          (a hosted checkout page, for example)
-
-Setting --premiumUpiId is what turns billingAvailable on: the server then
-builds a upi://pay?... link from it, which is what makes Android show its
-chooser of every installed UPI app (GPay/PhonePe/Paytm/...) with the payee
-pre-filled. Example:
-  npm run config:set -- --premiumUpiId yourname@okhdfcbank --premiumAmountInr 199
 
 Run with no arguments to print the current effective config.
 `);

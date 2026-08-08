@@ -1,18 +1,6 @@
 const User = require('../models/User');
 const appConfig = require('../services/appConfig.service');
 
-const buildUpiUri = ({ vpa, payeeName, amountInr, transactionRef }) => {
-  const params = new URLSearchParams({
-    pa: vpa,
-    pn: payeeName || 'SoulSync',
-    cu: 'INR',
-    tr: transactionRef,
-    tn: 'SoulSync Premium',
-  });
-  if (amountInr > 0) params.set('am', String(amountInr));
-  return `upi://pay?${params.toString()}`;
-};
-
 /**
  * Premium entitlement.
  *
@@ -39,27 +27,7 @@ exports.getStatus = async (req, res) => {
   const active = typeof u.hasPremium === 'function' ? u.hasPremium() : !!u.isPremium;
   const cfg = await appConfig.getConfig();
 
-  /**
-   * The explicit override (a full URL/URI, e.g. a hosted checkout page) wins
-   * if set. Otherwise, build a proper `upi://pay?...` link from the
-   * structured VPA/name/amount fields — this is the path that makes
-   * Android's UPI app chooser appear with the payee already filled in.
-   * Neither configured → null, i.e. billing genuinely is not set up, same as
-   * before.
-   */
-  const upiId = (cfg.premiumUpiId || '').trim();
-  const overrideUrl = (cfg.premiumPaymentUrl || '').trim();
-  const paymentUrl = overrideUrl || (upiId
-    ? buildUpiUri({
-        vpa: upiId,
-        payeeName: cfg.premiumUpiPayeeName,
-        amountInr: Number(cfg.premiumAmountInr) || 0,
-        // Short and reconciliation-friendly: which user, and when. There is
-        // no payment webhook to match this against automatically (see the
-        // file-level note) — it is read by a human off the bank statement.
-        transactionRef: `SS-${String(u._id).slice(-8)}-${Date.now()}`,
-      })
-    : '');
+  const paymentUrl = (cfg.premiumPaymentUrl || '').trim();
 
   res.json({
     success: true,

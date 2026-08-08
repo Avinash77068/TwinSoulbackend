@@ -33,26 +33,6 @@ const appConfigSchema = new mongoose.Schema({
   discoveryRequiresPremium: { type: Boolean, default: true },
   /** Whether Watch Together (YouTube sync) requires premium. */
   watchTogetherRequiresPremium: { type: Boolean, default: true },
-
-  /**
-   * UPI payment details, in structured form rather than one hand-assembled
-   * URL — so the person configuring this fills in their real VPA/amount and
-   * premium.controller.js builds a correct `upi://pay?...` intent URI from
-   * them (proper URL-encoding, required params present), instead of every
-   * operator having to know that URI format themselves and getting it wrong.
-   *
-   * A generic `upi://` link is what makes Android show its OWN chooser of
-   * every installed UPI app (GPay/PhonePe/Paytm/...) with the payee already
-   * filled in — that behavior is the OS's, not something this app draws;
-   * this only has to produce a well-formed link for it to kick in.
-   */
-  /** Payee VPA, e.g. "yourname@okhdfcbank". */
-  premiumUpiId: { type: String, default: '' },
-  /** Shown to the payer inside their UPI app as who they're paying. */
-  premiumUpiPayeeName: { type: String, default: 'SoulSync' },
-  /** Amount in INR. Omit to let the user type their own amount in-app. */
-  premiumAmountInr: { type: Number, default: 0 },
-
   premiumPaymentUrl: { type: String, default: '' },
   /** Max results per search page. */
   discoveryPageLimit: { type: Number, default: 20 },
