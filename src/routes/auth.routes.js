@@ -21,5 +21,6 @@ router.post('/regenerate-codes', protect, c.regenerateCodes);
 router.post('/fcm-token', protect, c.saveFcmToken);
 router.put('/preferences', protect, c.updatePreferences);
 router.put('/change-password', protect, c.changePassword);
+router.post('/logout', protect, c.logout);
 
 module.exports = router;
