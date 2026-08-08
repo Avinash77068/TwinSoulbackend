@@ -22,6 +22,8 @@ const envDefaults = () => ({
   defaultPremiumDays: Number(process.env.DEFAULT_PREMIUM_DAYS) || 30,
   discoveryEnabled: process.env.DISCOVERY_ENABLED !== 'false',
   discoveryRequiresPremium: process.env.DISCOVERY_REQUIRES_PREMIUM !== 'false',
+  watchTogetherRequiresPremium: process.env.WATCH_TOGETHER_REQUIRES_PREMIUM !== 'false',
+  premiumPaymentUrl: process.env.PREMIUM_PAYMENT_URL || '',
   discoveryPageLimit: Number(process.env.DISCOVERY_PAGE_LIMIT) || 20,
 });
 

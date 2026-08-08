@@ -27,6 +27,8 @@ exports.getStatus = async (req, res) => {
   const active = typeof u.hasPremium === 'function' ? u.hasPremium() : !!u.isPremium;
   const cfg = await appConfig.getConfig();
 
+  const paymentUrl = (cfg.premiumPaymentUrl || '').trim();
+
   res.json({
     success: true,
     data: {
@@ -35,15 +37,17 @@ exports.getStatus = async (req, res) => {
       // Advertised so the paywall copy can be driven from the server.
       features: {
         partnerSearch: 'Find a new partner from people open to connecting',
+        watchTogether: 'Watch YouTube together with your partner in sync',
         unlimitedCapsules: 'Unlimited time capsules and future letters',
         fullThemes: 'The complete theme library',
         hdExport: 'HD memory book and relationship movie export',
         deepInsights: 'Deeper mood and relationship insights',
         foreverArchive: 'Keep archived chapters forever',
       },
-      // Honest signal to the client that purchase is not wired up yet.
-      billingAvailable: false,
-      // Read from the DB config (AppConfig), so it can be flipped without a deploy.
+      // DB-backed gates — flip without a deploy via AppConfig.
+      watchTogetherRequiresPremium: cfg.watchTogetherRequiresPremium !== false,
+      paymentUrl: paymentUrl || null,
+      billingAvailable: !!paymentUrl,
       devActivationEnabled: cfg.allowDevPremium,
     },
   });

@@ -31,6 +31,9 @@ const appConfigSchema = new mongoose.Schema({
   discoveryEnabled: { type: Boolean, default: true },
   /** Whether browsing partner search requires premium. */
   discoveryRequiresPremium: { type: Boolean, default: true },
+  /** Whether Watch Together (YouTube sync) requires premium. */
+  watchTogetherRequiresPremium: { type: Boolean, default: true },
+  premiumPaymentUrl: { type: String, default: '' },
   /** Max results per search page. */
   discoveryPageLimit: { type: Number, default: 20 },
 
