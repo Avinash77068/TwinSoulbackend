@@ -215,6 +215,8 @@ module.exports = (io) => {
       const senderName = user.nickname || user.name || 'Partner';
       socket.to(`relationship:${user.relationshipId}`).emit('watchTogether:play', {
         title: data?.title ?? '',
+        currentTime: data?.currentTime,
+        videoId: data?.videoId,
       });
       try {
         const partner = await User.findById(user.partnerId).select('fcmToken');
@@ -236,8 +238,11 @@ module.exports = (io) => {
       const senderName = user.nickname || user.name || 'Partner';
       // Include server timestamp so frontend can show "X sec pehle"
       const pausedAt = Date.now();
+      // Same drop as `play` above — `currentTime` must reach the partner or
+      // their resync check can never run.
       socket.to(`relationship:${user.relationshipId}`).emit('watchTogether:pause', {
         title: data?.title ?? '', pausedAt,
+        currentTime: data?.currentTime,
       });
       try {
         const partner = await User.findById(user.partnerId).select('fcmToken');
@@ -252,6 +257,24 @@ module.exports = (io) => {
       } catch (err) {
         console.error('[Socket] watchTogether:pause FCM failed:', err.message);
       }
+    });
+
+    /**
+     * Scrubbing the timeline. Previously had no server handler at all — the
+     * client only ever had a listener for the INCOMING side, nothing emitted
+     * it and nothing relayed it, so dragging the progress bar never reached
+     * the partner.
+     *
+     * No push notification, unlike the other watchTogether events: a scrub is
+     * a live in-session correction, not something worth interrupting someone
+     * for if they've stepped away — and it can fire several times a minute.
+     */
+    socket.on('watchTogether:seek', (data) => {
+      if (!user?.relationshipId) return;
+      if (typeof data?.currentTime !== 'number') return;
+      socket.to(`relationship:${user.relationshipId}`).emit('watchTogether:seek', {
+        currentTime: data.currentTime,
+      });
     });
 
     socket.on('watchTogether:join', async () => {
