@@ -743,7 +743,7 @@ exports.updateFeatures = async (req, res) => {
   const relationship = await Relationship.findByIdAndUpdate(
     req.user.relationshipId,
     { [`features.${featureKey}`]: enabled },
-    { new: true },
+    { returnDocument: 'after' },
   );
   if (!relationship) {
     return res.status(404).json({ success: false, message: 'Relationship not found' });

@@ -17,7 +17,7 @@ exports.createEntry = async (req, res) => {
   const entry = await MidnightMemory.findOneAndUpdate(
     { userId: req.user._id, date },
     { content, relationshipId: req.user.relationshipId },
-    { upsert: true, new: true }
+    { upsert: true, returnDocument: 'after' }
   );
   res.json({ success: true, message: "Tonight's smile saved ✨", data: { entry } });
 };

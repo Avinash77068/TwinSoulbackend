@@ -296,7 +296,7 @@ exports.updateMyDiscoverySettings = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Nothing to update' });
   }
 
-  const user = await User.findByIdAndUpdate(req.user._id, update, { new: true });
+  const user = await User.findByIdAndUpdate(req.user._id, update, { returnDocument: 'after' });
 
   res.json({
     success: true,

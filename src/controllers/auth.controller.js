@@ -49,7 +49,7 @@ exports.register = async (req, res) => {
   await PendingRegistration.findOneAndUpdate(
     { email: email.toLowerCase() },
     { name, nickname: nickname || '', email, password, relationshipStartDate: relationshipStartDate || null, otp, otpVerified: false, createdAt: new Date() },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true },
   );
 
   try {
@@ -218,7 +218,7 @@ exports.updateProfile = async (req, res) => {
   if (Array.isArray(interests)) updates.interests = interests.map(String).slice(0, 20);
   if (req.file) updates.profilePhoto = req.file.cloudUrl;
 
-  const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true }).select('-password');
+  const user = await User.findByIdAndUpdate(req.user._id, updates, { returnDocument: 'after' }).select('-password');
   res.json({ success: true, message: 'Profile updated', data: { user } });
 };
 
@@ -236,7 +236,7 @@ exports.updatePreferences = async (req, res) => {
     updates.themeMode = themeMode;
   }
 
-  const user = await User.findByIdAndUpdate(req.user._id, updates, { new: true }).select('-password');
+  const user = await User.findByIdAndUpdate(req.user._id, updates, { returnDocument: 'after' }).select('-password');
   res.json({ success: true, message: 'Preferences updated', data: { user } });
 };
 
@@ -515,7 +515,7 @@ exports.regenerateCodes = async (req, res) => {
   const user = await User.findByIdAndUpdate(
     req.user._id,
     { coupleCode },
-    { new: true },
+    { returnDocument: 'after' },
   ).select('-password');
 
   res.json({

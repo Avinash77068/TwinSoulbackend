@@ -19,7 +19,7 @@ module.exports = (scheduleLocked, io) => {
       const claimed = await ScheduledMessage.findOneAndUpdate(
         { _id: sm._id, isDelivered: false, isCancelled: false },
         { isDelivered: true, deliveredAt: new Date() },
-        { new: true }
+        { returnDocument: 'after' }
       );
       if (!claimed) continue;
 

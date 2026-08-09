@@ -26,7 +26,7 @@ const claimFromLedger = async (relationshipId, field, want, cap) => {
   const res = await ProgressionLedger.findOneAndUpdate(
     { relationshipId, day, [field]: { $lt: cap } },
     { $inc: { [field]: grant } },
-    { new: true }
+    { returnDocument: 'after' }
   );
   if (!res) return 0;
 

@@ -5,7 +5,7 @@ exports.heartbeat = async (req, res) => {
   await Presence.findOneAndUpdate(
     { userId: req.user._id },
     { isOnline: true, lastHeartbeat: new Date() },
-    { upsert: true, new: true }
+    { upsert: true, returnDocument: 'after' }
   );
   await User.findByIdAndUpdate(req.user._id, { isOnline: true, lastSeen: new Date() });
   res.json({ success: true, message: 'Heartbeat received' });

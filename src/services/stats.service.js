@@ -256,7 +256,7 @@ const computeStats = async (relationshipId) => {
   return RelationshipStats.findOneAndUpdate(
     { relationshipId },
     payload,
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
   );
 };
 

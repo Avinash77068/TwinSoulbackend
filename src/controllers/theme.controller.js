@@ -44,7 +44,7 @@ exports.getTheme = async (req, res) => {
     const theme = await Theme.findOneAndUpdate(
       { relationshipId: req.user.relationshipId },
       { $setOnInsert: { relationshipId: req.user.relationshipId } },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
+      { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true }
     );
 
     // Return only the color keys (not _id, __v, timestamps)
@@ -95,7 +95,7 @@ exports.updateTheme = async (req, res) => {
     const theme = await Theme.findOneAndUpdate(
       { relationshipId: req.user.relationshipId },
       { $set: updates },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
+      { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true }
     );
 
     const data = {};
@@ -124,7 +124,7 @@ exports.resetTheme = async (req, res) => {
     const theme = await Theme.findOneAndReplace(
       { relationshipId: req.user.relationshipId },
       { relationshipId: req.user.relationshipId },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
+      { returnDocument: 'after', upsert: true, setDefaultsOnInsert: true }
     );
 
     const data = {};

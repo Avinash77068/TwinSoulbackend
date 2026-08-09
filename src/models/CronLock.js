@@ -31,7 +31,7 @@ cronLockSchema.statics.acquire = async function (name, ttlMs, owner) {
     await this.findOneAndUpdate(
       { _id: name, expiresAt: { $lt: now } },
       { $set: { lockedBy: owner, lockedAt: now, expiresAt } },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
     return true;
   } catch (err) {

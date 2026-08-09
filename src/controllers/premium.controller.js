@@ -78,7 +78,7 @@ exports.devActivate = async (req, res) => {
   const user = await User.findByIdAndUpdate(
     req.user._id,
     { isPremium: true, premiumUntil },
-    { new: true },
+    { returnDocument: 'after' },
   );
 
   console.warn(`[Premium] DEV activation for ${user.email} until ${premiumUntil.toISOString()}`);

@@ -243,7 +243,7 @@ exports.saveWheelActivities = async (req, res) => {
     const config = await WheelConfig.findOneAndUpdate(
       { relationshipId: req.user.relationshipId },
       { activities: cleaned },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: 'after' },
     );
     res.json({ success: true, message: 'Activities saved!', data: { activities: config.activities, isCustom: true } });
   } catch (err) {

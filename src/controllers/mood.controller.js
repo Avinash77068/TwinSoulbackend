@@ -26,7 +26,7 @@ exports.checkin = async (req, res) => {
   const entry = await MoodEntry.findOneAndUpdate(
     { userId: req.user._id, date },
     { mood, note: note || '', relationshipId: req.user.relationshipId },
-    { upsert: true, new: true }
+    { upsert: true, returnDocument: 'after' }
   );
 
   await awardTreePoints(req.user.relationshipId, 'checkin');
