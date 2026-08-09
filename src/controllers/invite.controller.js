@@ -11,7 +11,7 @@ const {
 } = require('../constants/lifecycle');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const APP_LINK_BASE = process.env.APP_LINK_BASE || 'https://twinsoul.app';
+const APP_LINK_BASE = process.env.APP_LINK_BASE || 'https://soulsync.app';
 
 const publicInviter = (u) => ({
   _id: u._id,
@@ -19,15 +19,6 @@ const publicInviter = (u) => ({
   nickname: u.nickname,
   profilePhoto: u.profilePhoto,
 });
-
-/**
- * POST /api/invite
- * Body: { channel?, message?, targetPhone?, targetEmail? }
- *
- * Creates a single-use, expiring invite and returns a shareable link + QR payload.
- * This is the PRIMARY connection mechanism — previously the only way to connect
- * was reading a couple code and a 4-digit password aloud to your partner.
- */
 exports.createInvite = async (req, res) => {
   const { channel = 'link', message = '', targetPhone, targetEmail } = req.body || {};
 
