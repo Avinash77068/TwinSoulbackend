@@ -10,6 +10,7 @@ router.get('/:token', c.getInvite);
 // ── Authenticated ────────────────────────────────────────────────────────────
 router.post('/', protect, c.createInvite);
 router.get('/mine/list', protect, c.getMyInvites);
+router.get('/received/list', protect, c.getReceivedInvites);
 router.post('/:token/accept', protect, c.acceptInvite);
 router.delete('/:token', protect, c.revokeInvite);
 

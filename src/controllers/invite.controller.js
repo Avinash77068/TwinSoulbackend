@@ -4,6 +4,7 @@ const InviteToken = require('../models/InviteToken');
 const Notification = require('../models/Notification');
 const { getIo } = require('../config/socketInstance');
 const relService = require('../services/relationship.service');
+const { getBlockedIds } = require('../utils/blocks');
 const {
   INVITE_EXPIRY_DAYS,
   INVITE_MAX_PER_DAY,
@@ -343,6 +344,39 @@ exports.getMyInvites = async (req, res) => {
         expiresAt: i.expiresAt,
         openedAt: i.openedAt,
         openCount: i.openCount,
+      })),
+    },
+  });
+};
+
+/**
+ * GET /api/invite/received/list
+ * Invites sent TO the caller — e.g. from partner discovery
+ * (`discovery.controller.js:sendInterest`) — powers the recipient's inbox.
+ */
+exports.getReceivedInvites = async (req, res) => {
+  const blockedIds = await getBlockedIds(req.user._id);
+
+  const invites = await InviteToken.find({
+    targetUserId: req.user._id,
+    revokedAt: null,
+    usedAt: null,
+    expiresAt: { $gt: new Date() },
+    inviterId: { $nin: blockedIds },
+  })
+    .sort({ createdAt: -1 })
+    .populate('inviterId', 'name nickname profilePhoto')
+    .lean();
+
+  res.json({
+    success: true,
+    data: {
+      invites: invites.map((i) => ({
+        token: i.token,
+        message: i.message,
+        createdAt: i.createdAt,
+        expiresAt: i.expiresAt,
+        inviter: i.inviterId ? publicInviter(i.inviterId) : null,
       })),
     },
   });

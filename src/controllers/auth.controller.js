@@ -538,9 +538,12 @@ exports.saveFcmToken = async (req, res) => {
 };
 
 exports.logout = async (req, res) => {
-  await Presence.findOneAndUpdate(
-    { userId: req.user._id },
-    { isOnline: false, lastSeen: new Date() }
-  );
+  await Promise.all([
+    Presence.findOneAndUpdate(
+      { userId: req.user._id },
+      { isOnline: false, lastSeen: new Date() }
+    ),
+    User.findByIdAndUpdate(req.user._id, { fcmToken: '' }),
+  ]);
   res.json({ success: true, message: 'Logged out successfully' });
 };
