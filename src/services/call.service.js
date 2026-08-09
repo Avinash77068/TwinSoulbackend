@@ -1,5 +1,7 @@
 // In-memory active call registry — cleared on server restart.
-// Production: swap Map for Redis if you need multi-instance support.
+// Intentional: this backend runs as a single Node instance (Socket.IO uses the
+// default in-process adapter), so a Map is sufficient. Durable call history lives
+// in CallLog; only live, in-flight call state is held here.
 
 const activeCalls = new Map(); // callId → CallRecord
 

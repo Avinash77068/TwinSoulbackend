@@ -53,37 +53,63 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use('/assets', express.static(path.join(__dirname, 'public/assets')));
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────
+// Backed by express-rate-limit's default in-process MemoryStore — no external
+// store, matching this single-instance deployment. Every limit is env-tunable so
+// it can be tightened for production without a code change.
 app.set('trust proxy', 1);
 
+const RATE_WINDOW_MS = Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000;
+const makeLimiter = ({ name, limit, message, windowMs = RATE_WINDOW_MS }) =>
+  rateLimit({
+    windowMs,
+    limit,
+    message: { success: false, message },
+    handler: (req, res, _next, options) => {
+      // Method, path and IP only — never bodies, tokens, passwords or OTPs.
+      console.warn(`[RATE_LIMIT] BLOCKED ${name} ${req.method} ${req.originalUrl} ip=${req.ip}`);
+      res.status(options.statusCode).json(options.message);
+    },
+  });
+
 // Strict limit for auth routes (prevent brute-force)
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  message: { success: false, message: 'Too many attempts, try again later' },
+const authLimiter = makeLimiter({
+  name: 'auth',
+  limit: Number(process.env.RATE_LIMIT_AUTH) || 20,
+  message: 'Too many attempts, try again later',
+});
+
+// OTP verification guesses a 6-digit code, so it is brute-forceable in exactly
+// the way login is and gets its own tier. Registration OTP previously fell
+// through to the general limiter, which was far too loose for a 6-digit secret.
+const otpLimiter = makeLimiter({
+  name: 'otp',
+  limit: Number(process.env.RATE_LIMIT_OTP) || 20,
+  message: 'Too many attempts, try again later',
 });
 
 // General API limit
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300,
-  message: { success: false, message: 'Too many requests' },
+const apiLimiter = makeLimiter({
+  name: 'api',
+  limit: Number(process.env.RATE_LIMIT_API) || 300,
+  message: 'Too many requests',
 });
 
 // Connecting is brute-forceable (couple code + numeric password), so it gets the
 // strict limiter rather than the general one.
-const connectLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { success: false, message: 'Too many connection attempts, try again later' },
+const connectLimiter = makeLimiter({
+  name: 'connect',
+  limit: Number(process.env.RATE_LIMIT_CONNECT) || 10,
+  message: 'Too many connection attempts, try again later',
 });
 
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/verify-otp', otpLimiter);
 // Password reset is unauthenticated and guesses a 6-digit code, so it gets the
 // strict limiter. The controller additionally caps attempts per account and
 // enforces a resend cooldown, so a rotating-IP attacker gains nothing.
 app.use('/api/auth/forgot-password', authLimiter);
-app.use('/api/auth/verify-reset-otp', authLimiter);
+app.use('/api/auth/verify-reset-otp', otpLimiter);
 app.use('/api/auth/reset-password', authLimiter);
 app.use('/api/relationship/connect', connectLimiter);
 app.use('/api/invite', connectLimiter);
