@@ -2,6 +2,7 @@ const MoodEntry = require('../models/MoodEntry');
 const { getIo } = require('../config/socketInstance');
 const awardXP = require('../utils/awardXP');
 const awardTreePoints = require('../utils/awardTreePoints');
+const { invalidate } = require('../cache/cacheMiddleware');
 
 const requireRelationship = (req, res) => {
   if (!req.user.relationshipId) {
@@ -44,6 +45,7 @@ exports.checkin = async (req, res) => {
   }
 
   awardXP(req.user.relationshipId, 'moodCheck');
+  await invalidate('mood-today', req.user._id);
   res.json({ success: true, message: 'Mood checked in ❤️', data: { mood: entry } });
 };
 

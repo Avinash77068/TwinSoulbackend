@@ -8,6 +8,7 @@ const TimelineEvent = require('../models/TimelineEvent');
 const Presence = require('../models/Presence');
 const PendingRegistration = require('../models/PendingRegistration');
 const mailer = require('../config/mailer');
+const { invalidate } = require('../cache/cacheMiddleware');
 
 const signToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
@@ -219,6 +220,7 @@ exports.updateProfile = async (req, res) => {
   if (req.file) updates.profilePhoto = req.file.cloudUrl;
 
   const user = await User.findByIdAndUpdate(req.user._id, updates, { returnDocument: 'after' }).select('-password');
+  await invalidate('profile', req.user._id);
   res.json({ success: true, message: 'Profile updated', data: { user } });
 };
 

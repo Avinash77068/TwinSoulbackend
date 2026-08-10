@@ -1,6 +1,7 @@
 const RelationshipLevel = require('../models/RelationshipLevel');
 const awardXP = require('../utils/awardXP');
 const { getTitle, XP_ACTIONS, LEVEL_TITLES } = require('../constants/progression');
+const { invalidate } = require('../cache/cacheMiddleware');
 
 const requireRelationship = (req, res) => {
   if (!req.user.relationshipId) {
@@ -54,6 +55,7 @@ exports.addXP = async (req, res) => {
   }
 
   await awardXP(req.user.relationshipId, action);
+  await invalidate('levels', req.user._id);
 
   const lvl = await RelationshipLevel.findOne({ relationshipId: req.user.relationshipId });
   res.json({

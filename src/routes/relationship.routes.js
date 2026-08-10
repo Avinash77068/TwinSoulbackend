@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const { protect } = require('../middleware/auth');
+const { cache } = require('../cache/cacheMiddleware');
 const c = require('../controllers/relationship.controller');
 
 // ── Connecting ───────────────────────────────────────────────────────────────
@@ -10,7 +11,7 @@ router.get('/pending', protect, c.getPendingRequest);
 router.post('/reconnect-choice', protect, c.reconnectChoose);
 
 // ── Reading ──────────────────────────────────────────────────────────────────
-router.get('/dashboard', protect, c.getDashboard);
+router.get('/dashboard', protect, cache('dashboard', 20), c.getDashboard);
 router.get('/stats', protect, c.getStats);
 router.get('/info', protect, c.getRelationshipInfo);
 router.get('/end-reasons', protect, c.getEndReasons);

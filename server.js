@@ -16,9 +16,11 @@ const compression = require('compression');
 const path = require('path');
 const rateLimit = require('express-rate-limit');
 const connectDB = require('./src/config/db');
+const { initRedis } = require('./src/cache/redisClient');
 const { errorHandler, notFound } = require('./src/middleware/errorHandler');
 
 connectDB();
+initRedis();
 
 const app = express();
 const server = http.createServer(app);

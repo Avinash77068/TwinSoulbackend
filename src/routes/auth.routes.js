@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { protect } = require('../middleware/auth');
 const { upload, handleR2Upload } = require('../middleware/upload');
+const { cache } = require('../cache/cacheMiddleware');
 const c = require('../controllers/auth.controller');
 
 router.post('/register', c.register);
@@ -15,7 +16,7 @@ router.post('/login', c.login);
 router.post('/forgot-password', c.forgotPassword);
 router.post('/verify-reset-otp', c.verifyResetOtp);
 router.post('/reset-password', c.resetPassword);
-router.get('/profile', protect, c.getProfile);
+router.get('/profile', protect, cache('profile', 60), c.getProfile);
 router.put('/profile', protect, upload.single('profilePhoto'), handleR2Upload, c.updateProfile);
 router.post('/regenerate-codes', protect, c.regenerateCodes);
 router.post('/fcm-token', protect, c.saveFcmToken);
