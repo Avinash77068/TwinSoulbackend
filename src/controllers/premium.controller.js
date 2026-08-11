@@ -21,37 +21,42 @@ const appConfig = require('../services/appConfig.service');
  * is genuinely per-user.
  */
 
-/** GET /api/premium/status */
-exports.getStatus = async (req, res) => {
+/** Core premium-status fetch, shared by GET /premium/status and the Home bootstrap aggregator. */
+const fetchPremiumStatusData = async (req) => {
   const u = req.user;
   const active = typeof u.hasPremium === 'function' ? u.hasPremium() : !!u.isPremium;
   const cfg = await appConfig.getConfig();
 
   const paymentUrl = (cfg.premiumPaymentUrl || '').trim();
 
-  res.json({
-    success: true,
-    data: {
-      isPremium: active,
-      premiumUntil: u.premiumUntil,
-      // Advertised so the paywall copy can be driven from the server.
-      features: {
-        partnerSearch: 'Find a new partner from people open to connecting',
-        watchTogether: 'Watch YouTube together with your partner in sync',
-        unlimitedCapsules: 'Unlimited time capsules and future letters',
-        fullThemes: 'The complete theme library',
-        hdExport: 'HD memory book and relationship movie export',
-        deepInsights: 'Deeper mood and relationship insights',
-        foreverArchive: 'Keep archived chapters forever',
-      },
-      // DB-backed gates — flip without a deploy via AppConfig.
-      watchTogetherRequiresPremium: cfg.watchTogetherRequiresPremium !== false,
-      paymentUrl: paymentUrl || null,
-      billingAvailable: !!paymentUrl,
-      devActivationEnabled: cfg.allowDevPremium,
+  return {
+    isPremium: active,
+    premiumUntil: u.premiumUntil,
+    // Advertised so the paywall copy can be driven from the server.
+    features: {
+      partnerSearch: 'Find a new partner from people open to connecting',
+      watchTogether: 'Watch YouTube together with your partner in sync',
+      unlimitedCapsules: 'Unlimited time capsules and future letters',
+      fullThemes: 'The complete theme library',
+      hdExport: 'HD memory book and relationship movie export',
+      deepInsights: 'Deeper mood and relationship insights',
+      foreverArchive: 'Keep archived chapters forever',
     },
-  });
+    // DB-backed gates — flip without a deploy via AppConfig.
+    watchTogetherRequiresPremium: cfg.watchTogetherRequiresPremium !== false,
+    paymentUrl: paymentUrl || null,
+    billingAvailable: !!paymentUrl,
+    devActivationEnabled: cfg.allowDevPremium,
+  };
 };
+
+/** GET /api/premium/status */
+exports.getStatus = async (req, res) => {
+  const data = await fetchPremiumStatusData(req);
+  res.json({ success: true, data });
+};
+
+exports.fetchPremiumStatusData = fetchPremiumStatusData;
 
 /**
  * POST /api/premium/dev-activate

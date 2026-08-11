@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const { protect } = require('../middleware/auth');
 const c = require('../controllers/relationship.controller');
+const homeController = require('../controllers/home.controller');
 
 // ── Connecting ───────────────────────────────────────────────────────────────
 router.post('/connect', protect, c.connectWithCode);   // couple-code fallback
@@ -10,6 +11,9 @@ router.get('/pending', protect, c.getPendingRequest);
 router.post('/reconnect-choice', protect, c.reconnectChoose);
 
 // ── Reading ──────────────────────────────────────────────────────────────────
+// Combines dashboard + levels + mood/today + mood/partner + premium/status
+// into one response for the Home screen's initial load.
+router.get('/home', protect, homeController.getHomeBootstrap);
 router.get('/dashboard', protect, c.getDashboard);
 router.get('/stats', protect, c.getStats);
 router.get('/info', protect, c.getRelationshipInfo);

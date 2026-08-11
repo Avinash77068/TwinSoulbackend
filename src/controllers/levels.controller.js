@@ -11,26 +11,31 @@ const requireRelationship = (req, res) => {
   return true;
 };
 
-exports.getLevel = async (req, res) => {
-  if (!requireRelationship(req, res)) return;
+/** Core level data fetch, shared by GET /levels and the Home bootstrap aggregator. */
+const fetchLevelData = async (req) => {
   let lvl = await RelationshipLevel.findOne({ relationshipId: req.user.relationshipId });
   if (!lvl) lvl = await RelationshipLevel.create({ relationshipId: req.user.relationshipId });
 
-  res.json({
-    success: true,
-    data: {
-      level: lvl.level,
-      xp: lvl.xp,
-      xpToNext: lvl.xpToNext,
-      title: getTitle(lvl.level),
-      progressPercent: lvl.xpToNext > 0
-        ? Math.max(0, Math.min(100, Math.round((lvl.xp / lvl.xpToNext) * 100)))
-        : 0,
-      history: lvl.history,
-      titles: LEVEL_TITLES,
-    },
-  });
+  return {
+    level: lvl.level,
+    xp: lvl.xp,
+    xpToNext: lvl.xpToNext,
+    title: getTitle(lvl.level),
+    progressPercent: lvl.xpToNext > 0
+      ? Math.max(0, Math.min(100, Math.round((lvl.xp / lvl.xpToNext) * 100)))
+      : 0,
+    history: lvl.history,
+    titles: LEVEL_TITLES,
+  };
 };
+
+exports.getLevel = async (req, res) => {
+  if (!requireRelationship(req, res)) return;
+  const data = await fetchLevelData(req);
+  res.json({ success: true, data });
+};
+
+exports.fetchLevelData = fetchLevelData;
 
 /**
  * POST /levels/add-xp

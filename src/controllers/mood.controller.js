@@ -49,15 +49,23 @@ exports.checkin = async (req, res) => {
   res.json({ success: true, message: 'Mood checked in ❤️', data: { mood: entry } });
 };
 
-exports.getTodayMood = async (req, res) => {
-  if (!requireRelationship(req, res)) return;
+/** Core today's-mood fetch, shared by GET /mood/today and the Home bootstrap aggregator. */
+const fetchTodayMoodData = async (req) => {
   const date = todayStr();
   const [myMood, partnerMood] = await Promise.all([
     MoodEntry.findOne({ userId: req.user._id, date }),
     MoodEntry.findOne({ userId: req.user.partnerId, date }),
   ]);
-  res.json({ success: true, data: { myMood, partnerMood } });
+  return { myMood, partnerMood };
 };
+
+exports.getTodayMood = async (req, res) => {
+  if (!requireRelationship(req, res)) return;
+  const data = await fetchTodayMoodData(req);
+  res.json({ success: true, data });
+};
+
+exports.fetchTodayMoodData = fetchTodayMoodData;
 
 exports.getMoodHistory = async (req, res) => {
   if (!requireRelationship(req, res)) return;
@@ -71,10 +79,4 @@ exports.getMoodHistory = async (req, res) => {
     MoodEntry.find({ userId: req.user.partnerId, date: { $gte: fromStr } }).sort({ date: 1 }),
   ]);
   res.json({ success: true, data: { myHistory, partnerHistory } });
-};
-
-exports.getPartnerMood = async (req, res) => {
-  if (!requireRelationship(req, res)) return;
-  const entry = await MoodEntry.findOne({ userId: req.user.partnerId, date: todayStr() });
-  res.json({ success: true, data: { partnerMood: entry } });
 };

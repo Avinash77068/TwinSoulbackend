@@ -404,11 +404,19 @@ exports.reconnectChoose = async (req, res) => {
   });
 };
 
-exports.getDashboard = async (req, res) => {
-  if (!requireRelationship(req, res)) return;
-
+/**
+ * Core dashboard data fetch, shared by GET /relationship/dashboard and the
+ * Home bootstrap aggregator (GET /relationship/home).
+ *
+ * @param {object} req
+ * @param {Relationship} [relationshipDoc] already-fetched relationship, so a
+ *        caller that already loaded it (the aggregator) does not pay for a
+ *        second identical query.
+ * @returns {Promise<object|null>} null when the relationship no longer exists.
+ */
+const fetchDashboardData = async (req, relationshipDoc) => {
   const [relationship, partner, tree, level, recentPhotos, recentMessages, stats] = await Promise.all([
-    Relationship.findById(req.user.relationshipId),
+    relationshipDoc ? Promise.resolve(relationshipDoc) : Relationship.findById(req.user.relationshipId),
     User.findById(req.user.partnerId).select('name nickname profilePhoto isOnline lastSeen bubbleColor'),
     LoveTree.findOne({ relationshipId: req.user.relationshipId }),
     RelationshipLevel.findOne({ relationshipId: req.user.relationshipId }),
@@ -417,55 +425,63 @@ exports.getDashboard = async (req, res) => {
     statsService.getStats(req.user.relationshipId),
   ]);
 
-  if (!relationship) {
-    return res.status(404).json({ success: false, message: 'Relationship not found' });
-  }
+  if (!relationship) return null;
 
   const stageInfo = resolveStageInfo(tree?.points);
 
-  res.json({
-    success: true,
-    data: {
-      daysTogether: stats?.daysTogether ?? 0,
-      partner,
-      loveTree: tree,
-      // Server-computed so the app stops using its own divergent thresholds.
-      treeStages: TREE_STAGES,
-      treeStageInfo: stageInfo,
-      level,
-      recentPhotos,
-      recentMessages,
-      relationship: {
-        _id: relationship._id,
-        status: Relationship.normalizeStatus(relationship.status),
-        rawStatus: relationship.status,
-        startDate: relationship.startDate,
-        pauseUntil: relationship.pauseUntil,
-        gracePeriodEndsAt: relationship.gracePeriodEndsAt,
-        reconciliationCount: relationship.reconciliationCount,
-      },
-      // Defaults now come from the schema instead of a hardcoded object that
-      // disagreed with it about watchTogether.
-      features: relationship.features?.toObject?.() ?? relationship.features ?? {},
-      stats: stats
-        ? {
-            messages: stats.messages,
-            calls: stats.calls,
-            photos: stats.photos,
-            memories: stats.memories,
-            goals: stats.goals,
-            games: stats.games,
-            mood: stats.mood,
-            streaks: stats.streaks,
-            weeklyScore: stats.weeklyScore,
-            computedAt: stats.computedAt,
-          }
-        : null,
-      // Kept flat for the existing app, which reads dashboard.streak.
-      streak: stats?.streaks?.current ?? 0,
+  return {
+    daysTogether: stats?.daysTogether ?? 0,
+    partner,
+    loveTree: tree,
+    // Server-computed so the app stops using its own divergent thresholds.
+    treeStages: TREE_STAGES,
+    treeStageInfo: stageInfo,
+    level,
+    recentPhotos,
+    recentMessages,
+    relationship: {
+      _id: relationship._id,
+      status: Relationship.normalizeStatus(relationship.status),
+      rawStatus: relationship.status,
+      startDate: relationship.startDate,
+      pauseUntil: relationship.pauseUntil,
+      gracePeriodEndsAt: relationship.gracePeriodEndsAt,
+      reconciliationCount: relationship.reconciliationCount,
     },
-  });
+    // Defaults now come from the schema instead of a hardcoded object that
+    // disagreed with it about watchTogether.
+    features: relationship.features?.toObject?.() ?? relationship.features ?? {},
+    stats: stats
+      ? {
+          messages: stats.messages,
+          calls: stats.calls,
+          photos: stats.photos,
+          memories: stats.memories,
+          goals: stats.goals,
+          games: stats.games,
+          mood: stats.mood,
+          streaks: stats.streaks,
+          weeklyScore: stats.weeklyScore,
+          computedAt: stats.computedAt,
+        }
+      : null,
+    // Kept flat for the existing app, which reads dashboard.streak.
+    streak: stats?.streaks?.current ?? 0,
+  };
 };
+
+exports.getDashboard = async (req, res) => {
+  if (!requireRelationship(req, res)) return;
+
+  const data = await fetchDashboardData(req);
+  if (!data) {
+    return res.status(404).json({ success: false, message: 'Relationship not found' });
+  }
+
+  res.json({ success: true, data });
+};
+
+exports.fetchDashboardData = fetchDashboardData;
 
 /** GET /stats — full rollup, force-refreshable. */
 exports.getStats = async (req, res) => {
