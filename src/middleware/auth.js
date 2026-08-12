@@ -12,6 +12,18 @@ const protect = async (req, res, next) => {
     const token = queryToken || authHeader?.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
+    /**
+     * Only plain session tokens may authenticate a request.
+     *
+     * Special-purpose tokens are signed with the SAME secret — the
+     * password-reset token carries `{ id, type: 'password_reset' }`, so without
+     * this check it was accepted here as a full session for its entire lifetime,
+     * granting access to every protected route. Session tokens carry no `type`.
+     */
+    if (decoded.type) {
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+
     // Still excludes `password`: the staleness check only needs passwordChangedAt,
     // and blanking a selected password field on the live document would make a
     // later req.user.save() try to re-hash `undefined`.
