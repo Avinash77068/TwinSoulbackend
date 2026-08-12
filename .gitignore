@@ -45,9 +45,17 @@ temp/
 # Firebase service account (sensitive — never commit)
 
 src/config/firebase-service-account.json
-*.json
+# NOTE: a blanket `*.json` used to live here. It silently excluded every new
+# JSON file (configs, fixtures, .well-known assets) from commits, which then
+# went missing on a fresh clone. Ignore specific sensitive files instead.
+
 # Runtime data
 pids
 *.pid
 *.seed
-*.pid.lockauth.controller.js
+*.pid.lock
+
+# Keys / certs
+*.pem
+*.key
+*.p12

@@ -56,10 +56,18 @@ exports.register = async (req, res) => {
   try {
     await mailer.sendOtpEmail(email, otp, name);
 
+    /**
+     * The OTP is NEVER returned in the response.
+     *
+     * It used to be included unconditionally "for dev", which meant email
+     * ownership was not actually verified by anything: register with someone
+     * else's address, read the code out of this 200, and complete signup as
+     * them. Set OTP_DEBUG=true locally if you need it without a mailbox.
+     */
     res.status(200).json({
       success: true,
       message: 'OTP sent to your email',
-      otp, // visible in dev — remove in production
+      ...(process.env.OTP_DEBUG === 'true' ? { otp } : {}),
     });
   } catch (err) {
     console.error('Failed to send OTP email:', err);

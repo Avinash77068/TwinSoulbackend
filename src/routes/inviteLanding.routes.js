@@ -16,6 +16,22 @@ const esc = (s) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
   );
 
+/**
+ * Embed a value inside a <script> block.
+ *
+ * JSON.stringify alone is NOT enough here: it escapes quotes and backslashes
+ * but leaves `/` untouched, so a token containing `</script>` closed the block
+ * and executed attacker markup — reflected XSS on a public, shareable page,
+ * with helmet's CSP disabled so nothing else would have caught it. Escaping
+ * `<` (and the line separators JSON.stringify leaves raw) makes breakout
+ * impossible while keeping the value byte-identical once parsed.
+ */
+const jsonForScript = (value) =>
+  JSON.stringify(value ?? '')
+    .replace(/</g, '\\u003C')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+
 const ANDROID_PKG = process.env.ANDROID_PACKAGE_NAME || 'com.soulsync';
 const IOS_APP_ID = process.env.IOS_APP_STORE_ID || '';
 const PLAY_URL = `https://play.google.com/store/apps/details?id=${ANDROID_PKG}`;
@@ -105,14 +121,14 @@ router.get('/i/:token', async (req, res) => {
 </div>
 <script>
   (function () {
-    var token = ${JSON.stringify(token)};
+    var token = ${jsonForScript(token)};
     // Preserve the token across install so it can be redeemed after signup.
     try { localStorage.setItem('twinsoul_pending_invite', token); } catch (e) {}
 
     var ua = navigator.userAgent || '';
     var isIOS = /iPad|iPhone|iPod/.test(ua);
     var store = document.getElementById('store');
-    if (store && isIOS) store.href = ${JSON.stringify(APPSTORE_URL)};
+    if (store && isIOS) store.href = ${jsonForScript(APPSTORE_URL)};
 
     // Try the app first; if nothing takes over, the user stays on this page and
     // can tap through to the store themselves. No auto-redirect — silently

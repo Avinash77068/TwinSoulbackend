@@ -1,58 +1,51 @@
-let youtubePromise = null;
+const youtubeService = require('../services/youtube.service');
 
-const getYoutube = async () => {
-  if (!youtubePromise) {
-    const { Innertube } = await import('youtubei.js');
-    youtubePromise = Innertube.create();
+/**
+ * Thin HTTP layer over youtube.service.
+ *
+ * All validation, provider selection, timeouts and normalisation live in the
+ * service; this only maps results and failures onto status codes. Upstream
+ * error details are logged server-side and never returned to the app, so a
+ * YouTube outage cannot leak internals to a client.
+ */
+
+const respond = (res, payload) => res.json({ success: true, data: payload });
+
+const handleFailure = (res, err, context) => {
+  if (err?.name === 'ValidationError') {
+    return res.status(400).json({ success: false, message: err.message });
   }
-
-  return youtubePromise;
+  if (err instanceof youtubeService.YouTubeUnavailableError) {
+    // 503: the request was fine, the upstream provider is not.
+    return res.status(503).json({
+      success: false,
+      message: 'YouTube is unavailable right now. Please try again.',
+    });
+  }
+  console.error(`[YouTube] unexpected ${context} failure:`, err);
+  return res.status(500).json({ success: false, message: 'Something went wrong. Please try again.' });
 };
 
-const mapVideo = (v) => ({
-  id: v.id,
-  title: v.title?.text ?? 'Untitled',
-  thumbnail: v.thumbnails?.[0]?.url ?? null,
-});
-
-// GET /api/youtube/search?q=...
+/** GET /api/youtube/search?q=&limit=&pageToken= */
 exports.search = async (req, res) => {
-  const { q } = req.query;
-  if (!q?.trim()) {
-    return res.status(400).json({ success: false, message: 'Query required' });
-  }
-
   try {
-    const yt = await getYoutube();
-    const results = await yt.search(q.trim());
-
-    const videos = (results.results ?? [])
-      .slice(0, 12)
-      .map(mapVideo)
-      .filter(v => v.id);
-
-    res.json({ success: true, data: { videos } });
-  } catch (error) {
-    console.error('YouTube search error:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch YouTube results' });
+    const result = await youtubeService.searchVideos({
+      query: req.query.q,
+      limit: req.query.limit,
+      pageToken: req.query.pageToken,
+    });
+    return respond(res, result);
+  } catch (err) {
+    return handleFailure(res, err, 'search');
   }
 };
 
-// GET /api/youtube/trending
+/** GET /api/youtube/trending?limit= */
 exports.trending = async (req, res) => {
   try {
-    const yt = await getYoutube();
-    const year = new Date().getFullYear();
-    const results = await yt.search(`trending music videos ${year}`);
-
-    const videos = (results.results ?? [])
-      .slice(0, 12)
-      .map(mapVideo)
-      .filter(v => v.id);
-
-    res.json({ success: true, data: { videos } });
-  } catch (error) {
-    console.error('YouTube trending error:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch YouTube results' });
+    const result = await youtubeService.trendingVideos({ limit: req.query.limit });
+    return respond(res, result);
+  } catch (err) {
+    return handleFailure(res, err, 'trending');
   }
 };

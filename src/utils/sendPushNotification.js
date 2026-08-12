@@ -1,8 +1,11 @@
-require('../config/firebase');
+const { isFirebaseReady } = require('../config/firebase');
 const { getMessaging } = require('firebase-admin/messaging');
 
 const sendPushNotification = async ({ fcmToken, title, body, data = {} }) => {
   if (!fcmToken) return;
+  // Credentials missing/invalid: skip rather than throw. Callers treat push as
+  // best-effort, and the API must keep working without it.
+  if (!isFirebaseReady()) return;
 
   const stringData = {};
   for (const [k, v] of Object.entries(data)) {

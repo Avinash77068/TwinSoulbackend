@@ -7,18 +7,31 @@ const errorHandler = (err, req, res, next) => {
   }
 
   if (err.code === 11000) {
-    const field = Object.keys(err.keyValue)[0];
-    return res.status(409).json({ success: false, message: `${field} already exists` });
+    // The colliding field name is an enumeration primitive — say what happened
+    // without naming it.
+    return res.status(409).json({ success: false, message: 'That value is already in use' });
   }
 
   if (err.name === 'CastError') {
-    return res.status(400).json({ success: false, message: 'Invalid ID format' });
+    return res.status(400).json({ success: false, message: 'Invalid value provided' });
   }
 
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || 'Internal server error',
-  });
+  const status = err.status || 500;
+
+  /**
+   * Never return err.message for a 5xx.
+   *
+   * Almost no handler here has a local try/catch, so this is the default path
+   * for every unexpected failure — and it was echoing raw internals straight to
+   * the app: Atlas hostnames from MongooseServerSelectionError, driver messages,
+   * JS TypeError text with internal identifiers, Cloudinary and Brevo detail.
+   * 4xx messages are ours and deliberate, so those still pass through.
+   */
+  const safeMessage = status < 500
+    ? (err.message || 'Request could not be completed')
+    : 'Something went wrong. Please try again.';
+
+  res.status(status).json({ success: false, message: safeMessage });
 };
 
 const notFound = (req, res) => {

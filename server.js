@@ -1,14 +1,25 @@
 require('dotenv').config({ path: `${__dirname}/.env` });
 
+/**
+ * After an uncaught exception the process state is undefined — abandoned call
+ * stacks, half-applied writes. Logging and CONTINUING (what this used to do)
+ * turns a crash into something worse: a zombie that holds its handles open,
+ * never binds a port, and never signals the platform to restart it. Exit and
+ * let the supervisor bring up a clean process.
+ */
 process.on('uncaughtException', (err) => {
   console.error('[uncaughtException]', err.message, err.stack);
+  process.exit(1);
 });
+// Rejections are logged, not fatal: several fire-and-forget paths (push, XP)
+// can reject harmlessly, and killing the process over those would be worse.
 process.on('unhandledRejection', (reason) => {
   console.error('[unhandledRejection]', reason);
 });
 
 const express = require('express');
 const http = require('http');
+const mongoose = require('mongoose');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -150,3 +161,44 @@ require('./src/jobs').registerJobs(io);
 
 const PORT = process.env.PORT || 8000;
 server.listen(PORT, () => console.log(`SoulSync server running on port ${PORT} ❤️`));
+
+/**
+ * Graceful shutdown.
+ *
+ * Render (and most platforms) send SIGTERM on every deploy, then SIGKILL ~30s
+ * later. Without this, in-flight requests were severed mid-response and every
+ * socket died without a `call:ended`/`partner:offline` — so live calls froze
+ * on a dead peer and `Presence.isOnline` stayed true until the sweeper ran,
+ * during which the "partner is online, skip push" branch silently swallowed
+ * message notifications.
+ */
+let shuttingDown = false;
+const shutdown = async (signal) => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[shutdown] ${signal} received — draining`);
+
+  // Tell connected clients before the socket dies, so their UI can react
+  // rather than freeze waiting on a peer that is already gone.
+  try { io.emit('server:shutdown'); io.close(); } catch (err) {
+    console.error('[shutdown] socket close failed:', err.message);
+  }
+
+  server.close(async () => {
+    try { await mongoose.connection.close(false); } catch (err) {
+      console.error('[shutdown] mongo close failed:', err.message);
+    }
+    console.log('[shutdown] complete');
+    process.exit(0);
+  });
+
+  // Backstop: never let a hung connection hold the process past the platform's
+  // grace period, or it gets SIGKILLed mid-write anyway.
+  setTimeout(() => {
+    console.error('[shutdown] forced after timeout');
+    process.exit(1);
+  }, 15000).unref();
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
