@@ -383,16 +383,25 @@ module.exports = (io) => {
     });
 
     socket.on('disconnect', async () => {
-      const now = new Date();
-      await Promise.all([
-        Presence.findOneAndUpdate({ userId }, { isOnline: false, lastSeen: now, socketId: '' }),
-        User.findByIdAndUpdate(userId, { isOnline: false, lastSeen: now }),
-      ]);
-      if (user?.relationshipId) {
-        socket.to(`relationship:${user.relationshipId}`).emit('partner:offline', { userId });
+      let superseded = false;
+      try {
+        const presence = await Presence.findOne({ userId }).select('socketId').lean();
+        superseded = !!(presence?.socketId && presence.socketId !== socket.id);
+        if (superseded) return;
+
+        const now = new Date();
+        await Promise.all([
+          Presence.findOneAndUpdate({ userId }, { isOnline: false, lastSeen: now, socketId: '' }),
+          User.findByIdAndUpdate(userId, { isOnline: false, lastSeen: now }),
+        ]);
+        if (user?.relationshipId) {
+          socket.to(`relationship:${user.relationshipId}`).emit('partner:offline', { userId });
+        }
+      } catch (err) {
+        console.error('[Socket] disconnect cleanup failed:', err.message);
+      } finally {
+        if (!superseded) callHandlers.onUserDisconnect(io, userId);
       }
-      // FIX: centralized call cleanup on disconnect — prevents duplicate handlers
-      callHandlers.onUserDisconnect(io, userId);
     });
 
     // ── Call signaling ────────────────────────────────────────────────────
