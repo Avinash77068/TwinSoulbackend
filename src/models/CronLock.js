@@ -9,7 +9,7 @@ const mongoose = require('mongoose');
  * is a very visible failure. Cheap to run and sufficient for a single Mongo primary.
  */
 const cronLockSchema = new mongoose.Schema({
-  /** Job name, e.g. 'lifecycle:grace'. */
+  /** Job name, e.g. 'lifecycle:sweepLegacyEnding'. */
   _id: { type: String, required: true },
   lockedBy: { type: String, required: true },
   lockedAt: { type: Date, required: true },

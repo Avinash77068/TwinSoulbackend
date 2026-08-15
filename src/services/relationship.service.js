@@ -301,9 +301,9 @@ const cancelPurge = async (relationship) => {
  * Find the relationship a user is currently a member of, in any live state.
  * Used to block starting a new relationship while one is still active/paused.
  *
- * `ending` is NOT blocking: unlinkUsers() already ran when the relationship
- * entered the grace period, so the user is free to connect with someone new.
- * The old relationship just sits there, undoable until it archives.
+ * A legacy `ending` row is NOT blocking: unlinkUsers() already ran when it was
+ * created, so the user is free to connect with someone new while the sweep
+ * cron finishes archiving it.
  */
 const findBlockingRelationship = async (userId) =>
   Relationship.findOne({
