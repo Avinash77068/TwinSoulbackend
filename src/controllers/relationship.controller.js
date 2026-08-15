@@ -12,7 +12,6 @@ const statsService = require('../services/stats.service');
 const { isBlockedBetween } = require('../utils/blocks');
 const { resolveStageInfo, TREE_STAGES } = require('../constants/progression');
 const {
-  GRACE_PERIOD_DAYS,
   RECONNECT_COOLDOWN_HOURS,
   END_REASONS,
   PURGE_DELAY_DAYS,
@@ -445,7 +444,6 @@ const fetchDashboardData = async (req, relationshipDoc) => {
       rawStatus: relationship.status,
       startDate: relationship.startDate,
       pauseUntil: relationship.pauseUntil,
-      gracePeriodEndsAt: relationship.gracePeriodEndsAt,
       reconciliationCount: relationship.reconciliationCount,
     },
     // Defaults now come from the schema instead of a hardcoded object that
@@ -543,78 +541,16 @@ exports.requestLeave = async (req, res) => {
     });
   }
 
-  await relService.beginEnding(relationship, req.user._id, reason);
+  await relService.endRelationship(relationship, req.user._id, reason);
 
   res.json({
     success: true,
     message: 'Your relationship has ended. Everything you shared is safe in your Archive.',
     data: {
       relationshipId: relationship._id,
-      gracePeriodEndsAt: relationship.gracePeriodEndsAt,
-      gracePeriodDays: GRACE_PERIOD_DAYS,
-      canUndo: true,
     },
   });
 };
-
-/**
- * POST /undo-leave  (alias: POST /cancel-leave)
- *
- * Replaces the old cancelLeave, which was dead code: nothing ever set the
- * *WantsLeave flags it cleared, and after a leave the caller's relationshipId
- * was already null so it always 400'd.
- */
-exports.undoLeave = async (req, res) => {
-  const bodyId = req.body?.relationshipId;
-
-  // After a leave the user has no relationshipId, so find their ending row.
-  const relationship = bodyId
-    ? await Relationship.findById(bodyId)
-    : await Relationship.findOne({
-        $or: [{ user1: req.user._id }, { user2: req.user._id }],
-        status: 'ending',
-      }).sort({ endedAt: -1 });
-
-  if (!relationship) {
-    return res.status(404).json({ success: false, message: 'Nothing to undo' });
-  }
-  if (!relationship.isMember(req.user._id)) {
-    return res.status(403).json({ success: false, message: 'Not authorized' });
-  }
-  if (relationship.status !== 'ending') {
-    return res.status(400).json({
-      success: false,
-      message: relationship.status === 'archived'
-        ? 'The grace period has passed. You can reconnect from your Archive.'
-        : 'This relationship is not ending.',
-    });
-  }
-  if (relationship.gracePeriodEndsAt && relationship.gracePeriodEndsAt < new Date()) {
-    return res.status(400).json({ success: false, message: 'The grace period has passed.' });
-  }
-
-  // Refuse if either person has already started a new relationship.
-  const [b1, b2] = await Promise.all([
-    relService.findBlockingRelationship(relationship.user1),
-    relService.findBlockingRelationship(relationship.user2),
-  ]);
-  const blocking = [b1, b2].find((b) => b && String(b._id) !== String(relationship._id));
-  if (blocking) {
-    return res.status(409).json({
-      success: false,
-      message: 'This can no longer be undone — one of you has since connected with someone else.',
-    });
-  }
-
-  await relService.undoEnding(relationship);
-  res.json({
-    success: true,
-    message: 'Welcome back ❤️ Nothing was lost.',
-    data: { relationship },
-  });
-};
-// Backward compatibility: the app still calls POST /relationship/cancel-leave.
-exports.cancelLeave = exports.undoLeave;
 
 /**
  * POST /pause  — "Take a Break".
@@ -678,9 +614,6 @@ exports.restoreRelationship = async (req, res) => {
   if (!relationship.isMember(req.user._id)) {
     return res.status(403).json({ success: false, message: 'Not authorized' });
   }
-
-  // Grace period → a plain undo, no partner consent needed.
-  if (relationship.status === 'ending') return exports.undoLeave(req, res);
 
   if (!['archived', 'ended'].includes(relationship.status)) {
     return res.status(400).json({ success: false, message: 'This relationship is not archived' });
@@ -779,7 +712,6 @@ exports.getEndReasons = async (_req, res) => {
     success: true,
     data: {
       reasons: END_REASONS,
-      gracePeriodDays: GRACE_PERIOD_DAYS,
       purgeDelayDays: PURGE_DELAY_DAYS,
     },
   });

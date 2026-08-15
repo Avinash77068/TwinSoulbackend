@@ -4,9 +4,6 @@
  */
 
 module.exports = {
-  /** Days a relationship stays in `ending` and remains fully undoable. */
-  GRACE_PERIOD_DAYS: 7,
-
   /** Days between requesting a permanent delete and the data actually going. */
   PURGE_DELAY_DAYS: 30,
 

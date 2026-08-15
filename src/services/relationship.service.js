@@ -6,7 +6,7 @@ const TimelineEvent = require('../models/TimelineEvent');
 const Notification = require('../models/Notification');
 const { getIo } = require('../config/socketInstance');
 const sendPushNotification = require('../utils/sendPushNotification');
-const { GRACE_PERIOD_DAYS, PURGE_DELAY_DAYS } = require('../constants/lifecycle');
+const { PURGE_DELAY_DAYS } = require('../constants/lifecycle');
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -129,7 +129,6 @@ const activateRelationship = async (relationship, opts = {}) => {
   relationship.user2WantsLeave = false;
   relationship.endedBy = null;
   relationship.endedAt = null;
-  relationship.gracePeriodEndsAt = null;
   relationship.endReason = null;
   relationship.isArchived = false;
   relationship.archivedAt = null;
@@ -181,25 +180,30 @@ const activateRelationship = async (relationship, opts = {}) => {
 };
 
 /**
- * Move an active relationship into the `ending` grace period.
+ * End an active relationship immediately and permanently.
  *
- * This REPLACES the old immediate, unilateral, irreversible teardown:
- *   - data is untouched (nothing deleted, nothing orphaned)
- *   - both users drop to solo but the relationship remains fully restorable
- *   - `gracePeriodEndsAt` drives the archive cron
+ * No grace/undo period: the relationship goes straight to `archived`. Nothing
+ * is deleted — messages, photos, the Love Tree etc. all stay put and remain
+ * reachable from the Archive — this only unlinks the two users and closes the
+ * relationship out for good.
  */
-const beginEnding = async (relationship, byUserId, reason = null) => {
+const endRelationship = async (relationship, byUserId, reason = null) => {
   const now = new Date();
-  relationship.status = 'ending';
+  relationship.status = 'archived';
   relationship.endedBy = byUserId;
   relationship.endedAt = now;
-  relationship.gracePeriodEndsAt = new Date(now.getTime() + GRACE_PERIOD_DAYS * DAY_MS);
   relationship.endReason = reason || null;
+  relationship.isArchived = true;
+  relationship.archivedAt = now;
   relationship.user1WantsLeave = false;
   relationship.user2WantsLeave = false;
   await relationship.save();
 
   await unlinkUsers(relationship);
+  await User.updateMany(
+    { _id: { $in: [relationship.user1, relationship.user2].filter(Boolean) } },
+    { $inc: { relationshipCount: 1 } },
+  ).catch(() => {});
 
   const partnerId = relationship.partnerOf(byUserId);
   const initiator = await User.findById(byUserId).select('name nickname').lean();
@@ -211,7 +215,6 @@ const beginEnding = async (relationship, byUserId, reason = null) => {
       socketPayload: {
         leaverName: initiatorName,
         relationshipId: relationship._id,
-        gracePeriodEndsAt: relationship.gracePeriodEndsAt,
       },
       title: 'Your relationship has ended',
       body: `Everything you shared is safe in your Archive.`,
@@ -220,42 +223,27 @@ const beginEnding = async (relationship, byUserId, reason = null) => {
     });
   }
 
-  // Tell the initiator's other devices too.
-  const io = getIo();
-  if (io) {
-    io.to(`user:${byUserId}`).emit('relationship:ending', {
-      relationshipId: relationship._id,
-      gracePeriodEndsAt: relationship.gracePeriodEndsAt,
-    });
-  }
-
   return relationship;
 };
 
-/** Undo an `ending` during the grace period, restoring the relationship intact. */
-const undoEnding = async (relationship) => {
-  await activateRelationship(relationship, { continuePrevious: true });
-  // activateRelationship bumps reconciliationCount; an undo is not a reconciliation.
-  relationship.reconciliationCount = Math.max(0, (relationship.reconciliationCount || 1) - 1);
-  await relationship.save();
-  emitToBoth(relationship, 'relationship:restored', { relationshipId: relationship._id });
-  return relationship;
-};
-
-/** Grace period expired → durable read-only archive. */
+/**
+ * Archive a relationship still sitting in the legacy `ending` state.
+ *
+ * Grace-period countdown/undo was removed — `endRelationship` above now
+ * archives immediately — but any relationship that was already mid-countdown
+ * at deploy time must still resolve to `archived` rather than being stranded.
+ * This is only a one-time drain for that legacy data, run by the
+ * `lifecycle:sweepLegacyEnding` cron job; new code never creates `ending` rows.
+ */
 const archiveRelationship = async (relationship) => {
   const wasAlreadyArchived = relationship.isArchived;
 
   relationship.status = 'archived';
   relationship.isArchived = true;
   relationship.archivedAt = new Date();
-  relationship.gracePeriodEndsAt = null;
   await relationship.save();
   await unlinkUsers(relationship);
 
-  // Counted here, not in unlinkUsers: unlinkUsers also runs during beginEnding,
-  // and an undo inside the grace period must not leave a phantom count behind.
-  // This is the point the breakup becomes final.
   if (!wasAlreadyArchived) {
     await User.updateMany(
       { _id: { $in: [relationship.user1, relationship.user2].filter(Boolean) } },
@@ -341,8 +329,7 @@ module.exports = {
   emitToBoth,
   notifyUser,
   activateRelationship,
-  beginEnding,
-  undoEnding,
+  endRelationship,
   archiveRelationship,
   pauseRelationship,
   resumeRelationship,

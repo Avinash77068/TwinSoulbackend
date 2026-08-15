@@ -19,13 +19,15 @@ const featuresSchema = new mongoose.Schema({
  *   pending   — invite sent, awaiting both approvals
  *   active    — live relationship, full feature access
  *   paused    — "Take a Break": read-only both sides, streaks frozen, resumable
- *   ending    — grace period after one partner ended it; fully undoable
  *   archived  — durable read-only chapter; frozen Love Tree, export available
  *   purged    — scheduled for permanent deletion
  *
- * `ended` is the LEGACY value for what is now `ending`/`archived`. It is kept in
- * the enum so existing documents continue to validate; scripts/migrateRelationshipStatus.js
- * migrates them, and isTerminal()/isReadable() below treat it as archived.
+ * `ending` and `ended` are LEGACY values from the removed grace-period feature
+ * (a relationship used to sit in `ending` for 7 undoable days before becoming
+ * `archived`). Ending a relationship now goes straight to `archived`, so no
+ * code creates `ending` anymore — both legacy values are kept in the enum only
+ * so any pre-existing document still validates. `normalizeStatus()` below and
+ * the archive controller's read path both treat them as archived.
  */
 const STATUSES = ['pending', 'active', 'paused', 'ending', 'archived', 'purged', 'ended'];
 
@@ -37,14 +39,12 @@ const relationshipSchema = new mongoose.Schema({
   user1Approved: { type: Boolean, default: false },
   user2Approved: { type: Boolean, default: false },
 
-  // ── Ending / grace period ──────────────────────────────────────────────────
+  // ── Ending ───────────────────────────────────────────────────────────────────
   user1WantsLeave: { type: Boolean, default: false },
   user2WantsLeave: { type: Boolean, default: false },
-  /** Who initiated the ending (for copy, and to know who may not undo alone). */
+  /** Who ended the relationship (for copy/attribution). */
   endedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   endedAt: { type: Date },
-  /** When `ending` becomes `archived`. Nulled on undo. */
-  gracePeriodEndsAt: { type: Date },
   /** Optional, private, product-learning only. Never shown to the partner. */
   endReason: {
     type: String,
@@ -83,7 +83,6 @@ const relationshipSchema = new mongoose.Schema({
 relationshipSchema.index({ user1: 1, status: 1 });
 relationshipSchema.index({ user2: 1, status: 1 });
 relationshipSchema.index({ user1: 1, user2: 1, status: 1 });
-relationshipSchema.index({ status: 1, gracePeriodEndsAt: 1 });
 relationshipSchema.index({ status: 1, purgeScheduledAt: 1 });
 relationshipSchema.index({ status: 1, pauseUntil: 1 });
 

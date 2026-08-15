@@ -195,8 +195,6 @@ const run = async () => {
       return;
     }
 
-    // unlinkUsers only, not beginEnding: this is a test teardown, so we skip the
-    // grace period, the breakup notification and the push to the other side.
     await relationshipService.unlinkUsers(rel);
     await Relationship.deleteOne({ _id: rel._id });
     console.log(`✓ Unlinked and removed relationship ${rel._id}`);

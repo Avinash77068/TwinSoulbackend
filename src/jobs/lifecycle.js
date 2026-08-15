@@ -11,17 +11,20 @@ const {
  * `pauseUntil`, and no purge was ever executed.
  */
 module.exports = (scheduleLocked) => {
-  // ── ending → archived, once the grace period expires ───────────────────────
-  scheduleLocked('lifecycle:grace', '*/10 * * * *', async () => {
-    const due = await Relationship.find({
-      status: 'ending',
-      gracePeriodEndsAt: { $lte: new Date() },
-    }).limit(200);
+  // ── legacy `ending` rows → archived ─────────────────────────────────────────
+  // Grace-period countdown/undo was removed — leaving a relationship now
+  // archives it immediately (see relService.endRelationship) — but any
+  // relationship that was already mid-countdown when this shipped would
+  // otherwise be stranded in `ending` forever with no cron left to finish the
+  // job. This sweep drains those legacy rows; going forward nothing creates
+  // new `ending` rows, so it should settle to a permanent no-op.
+  scheduleLocked('lifecycle:sweepLegacyEnding', '*/10 * * * *', async () => {
+    const due = await Relationship.find({ status: 'ending' }).limit(200);
 
     for (const rel of due) {
       try {
         await relService.archiveRelationship(rel);
-        console.log(`[Cron:lifecycle] Archived relationship ${rel._id}`);
+        console.log(`[Cron:lifecycle] Archived legacy ending relationship ${rel._id}`);
       } catch (err) {
         console.error(`[Cron:lifecycle] archive ${rel._id} failed:`, err.message);
       }

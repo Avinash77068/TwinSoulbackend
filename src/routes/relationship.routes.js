@@ -20,9 +20,7 @@ router.get('/info', protect, c.getRelationshipInfo);
 router.get('/end-reasons', protect, c.getEndReasons);
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
-router.post('/leave', protect, c.requestLeave);         // → 7-day grace period
-router.post('/undo-leave', protect, c.undoLeave);
-router.post('/cancel-leave', protect, c.cancelLeave);   // legacy alias for undo-leave
+router.post('/leave', protect, c.requestLeave);         // ends immediately, archived
 router.post('/pause', protect, c.pauseRelationship);    // "Take a Break"
 router.post('/resume', protect, c.resumeRelationship);
 router.post('/restore', protect, c.restoreRelationship);
