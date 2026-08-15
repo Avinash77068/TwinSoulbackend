@@ -37,6 +37,16 @@ const appConfigSchema = new mongoose.Schema({
   /** Max results per search page. */
   discoveryPageLimit: { type: Number, default: 20 },
 
+  // ── App update ────────────────────────────────────────────────────────────
+  /** versionCode of the latest published APK — compared against the installed build. */
+  latestVersionCode: { type: Number, default: 0 },
+  /** Human-facing version, e.g. "3.2" — display only, not compared. */
+  latestVersionName: { type: String, default: '' },
+  /** Direct download URL for the latest APK. */
+  apkUrl: { type: String, default: '' },
+  /** Shown in the update popup. */
+  releaseNotes: { type: String, default: '' },
+
   /** Free-form notes for whoever is operating this. */
   notes: { type: String, default: '' },
   updatedBy: { type: String, default: '' },

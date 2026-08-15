@@ -125,6 +125,7 @@ app.use('/api/calls',  require('./src/routes/call.routes'));
 app.use('/api/feedback', require('./src/routes/feedback.routes'));
 app.use('/api/goals', require('./src/routes/goals.routes'));
 app.use('/api/legal', require('./src/routes/legal.routes'));
+app.use('/api/app', require('./src/routes/app.routes'));
 
 // ── Invite links ─────────────────────────────────────────────────────────────
 // Web fallback for https://<host>/i/<token>. App Links / Universal Links open

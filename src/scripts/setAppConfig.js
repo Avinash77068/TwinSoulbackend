@@ -20,8 +20,8 @@ const mongoose = require('mongoose');
 const os = require('os');
 
 const BOOLEANS = ['allowDevPremium', 'discoveryEnabled', 'discoveryRequiresPremium'];
-const NUMBERS = ['defaultPremiumDays', 'discoveryPageLimit'];
-const STRINGS = ['notes'];
+const NUMBERS = ['defaultPremiumDays', 'discoveryPageLimit', 'latestVersionCode'];
+const STRINGS = ['notes', 'latestVersionName', 'apkUrl', 'releaseNotes'];
 
 const argv = process.argv.slice(2);
 
@@ -69,6 +69,10 @@ Strings:  ${STRINGS.map((s) => '--' + s).join(' ')}
   --discoveryRequiresPremium true|false  false makes partner search free
   --defaultPremiumDays <n>               default grant length
   --discoveryPageLimit <n>               results per search page
+  --latestVersionCode <n>                latest published APK's versionCode
+  --latestVersionName <s>                latest published APK's versionName (e.g. "3.2")
+  --apkUrl <s>                           direct download URL for the latest APK
+  --releaseNotes <s>                     shown in the in-app update popup
 
 Run with no arguments to print the current effective config.
 `);
