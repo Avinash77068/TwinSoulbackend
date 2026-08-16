@@ -47,6 +47,14 @@ const appConfigSchema = new mongoose.Schema({
   /** Shown in the update popup. */
   releaseNotes: { type: String, default: '' },
 
+  // ── Landing page (soulsyncWeb) ───────────────────────────────────────────
+  /** App icon shown in the landing page navbar/footer. */
+  iconUrl: { type: String, default: '' },
+  /** Hero section screenshot. */
+  screenshot0Url: { type: String, default: '' },
+  /** "A look inside" section screenshot. */
+  screenshot1Url: { type: String, default: '' },
+
   /** Free-form notes for whoever is operating this. */
   notes: { type: String, default: '' },
   updatedBy: { type: String, default: '' },

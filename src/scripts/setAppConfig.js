@@ -21,7 +21,15 @@ const os = require('os');
 
 const BOOLEANS = ['allowDevPremium', 'discoveryEnabled', 'discoveryRequiresPremium'];
 const NUMBERS = ['defaultPremiumDays', 'discoveryPageLimit', 'latestVersionCode'];
-const STRINGS = ['notes', 'latestVersionName', 'apkUrl', 'releaseNotes'];
+const STRINGS = [
+  'notes',
+  'latestVersionName',
+  'apkUrl',
+  'releaseNotes',
+  'iconUrl',
+  'screenshot0Url',
+  'screenshot1Url',
+];
 
 const argv = process.argv.slice(2);
 
@@ -73,6 +81,9 @@ Strings:  ${STRINGS.map((s) => '--' + s).join(' ')}
   --latestVersionName <s>                latest published APK's versionName (e.g. "3.2")
   --apkUrl <s>                           direct download URL for the latest APK
   --releaseNotes <s>                     shown in the in-app update popup
+  --iconUrl <s>                          landing page: app icon URL
+  --screenshot0Url <s>                   landing page: hero screenshot URL
+  --screenshot1Url <s>                   landing page: "look inside" screenshot URL
 
 Run with no arguments to print the current effective config.
 `);
