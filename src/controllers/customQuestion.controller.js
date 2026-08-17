@@ -70,6 +70,39 @@ exports.askQuestion = async (req, res) => {
   res.status(201).json({ success: true, message: 'Question sent!', data: { item } });
 };
 
+exports.editQuestion = async (req, res) => {
+  if (!requireRelationship(req, res)) return;
+  const { question } = req.body;
+  if (!question || !question.trim()) {
+    return res.status(400).json({ success: false, message: 'Question is required' });
+  }
+
+  const item = await CustomQuestion.findOne({ _id: req.params.id, relationshipId: req.user.relationshipId });
+  if (!item) return res.status(404).json({ success: false, message: 'Question not found' });
+  if (String(item.askedBy) !== String(req.user._id)) {
+    return res.status(403).json({ success: false, message: "You can't edit someone else's question" });
+  }
+  if (item.status === 'answered') {
+    return res.status(400).json({ success: false, message: 'Already answered — cannot edit' });
+  }
+
+  item.question = question.trim();
+  if (req.file?.cloudUrl) item.questionPhoto = req.file.cloudUrl;
+  await item.save();
+
+  const askerName = req.user.nickname || req.user.name || 'Partner';
+  await notifyPartner(
+    req.user.partnerId,
+    askerName,
+    'customQuestion:edited',
+    { id: item._id, question: item.question, questionPhoto: item.questionPhoto, askerName },
+    `💌 ${askerName} edited their question`,
+    item.question,
+  );
+
+  res.json({ success: true, message: 'Question updated!', data: { item } });
+};
+
 exports.answerQuestion = async (req, res) => {
   if (!requireRelationship(req, res)) return;
   const { answer } = req.body;
