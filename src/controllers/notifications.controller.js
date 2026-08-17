@@ -41,3 +41,12 @@ exports.clearAll = async (req, res) => {
   await Notification.deleteMany({ userId: req.user._id });
   res.json({ success: true, message: 'All notifications cleared' });
 };
+
+exports.deleteMany = async (req, res) => {
+  const { ids } = req.body;
+  if (!Array.isArray(ids) || !ids.length) {
+    return res.status(400).json({ success: false, message: 'ids is required' });
+  }
+  const result = await Notification.deleteMany({ _id: { $in: ids }, userId: req.user._id });
+  res.json({ success: true, message: `${result.deletedCount} notification(s) deleted` });
+};

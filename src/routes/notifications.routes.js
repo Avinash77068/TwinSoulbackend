@@ -5,6 +5,7 @@ const c = require('../controllers/notifications.controller');
 router.get('/', protect, c.getNotifications);
 router.put('/read-all', protect, c.markAllRead);
 router.delete('/clear-all', protect, c.clearAll);
+router.post('/delete-many', protect, c.deleteMany);
 router.put('/:id/read', protect, c.markRead);
 router.delete('/:id', protect, c.deleteNotification);
 
