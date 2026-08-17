@@ -1,5 +1,6 @@
 const MiniGame            = require('../models/MiniGame');
 const WheelConfig         = require('../models/WheelConfig');
+const CustomGamePrompts   = require('../models/CustomGamePrompts');
 const Presence            = require('../models/Presence');
 const User                = require('../models/User');
 const Notification        = require('../models/Notification');
@@ -54,6 +55,18 @@ const GAME_QUESTIONS = {
   ],
 };
 
+const CUSTOM_PROMPT_GAME_TYPES = ['truth_dare', 'who_knows_better', 'this_or_that', 'love_quiz'];
+
+// Couple's own prompts, if they've saved any, else the built-in bank —
+// mirrors how spinWheelActivity already picks WheelConfig over the default list.
+const resolveQuestionBank = async (relationshipId, gameType) => {
+  if (CUSTOM_PROMPT_GAME_TYPES.includes(gameType)) {
+    const custom = await CustomGamePrompts.findOne({ relationshipId, gameType });
+    if (custom?.prompts?.length) return custom.prompts;
+  }
+  return GAME_QUESTIONS[gameType] || [];
+};
+
 // ─── Existing game controllers ─────────────────────────────────────────────────
 
 exports.getGames = async (req, res) => {
@@ -81,7 +94,7 @@ exports.startGame = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Invalid game type' });
   }
 
-  const questions = GAME_QUESTIONS[gameType] || [];
+  const questions = await resolveQuestionBank(req.user.relationshipId, gameType);
 
   if (TURN_BASED_TYPES.includes(gameType)) {
     const existing = await MiniGame.findOne({
@@ -143,7 +156,7 @@ exports.submitAnswer = async (req, res) => {
   const currentRound = game.rounds[game.rounds.length - 1];
   if (!currentRound) return res.status(400).json({ success: false, message: 'No active round' });
 
-  const questions = GAME_QUESTIONS[game.gameType] || [];
+  const questions = await resolveQuestionBank(game.relationshipId, game.gameType);
   const userId    = req.user._id.toString();
   const rel       = await require('../models/Relationship').findById(game.relationshipId);
   const isUser1   = rel.user1.toString() === userId;
@@ -167,10 +180,10 @@ exports.submitAnswer = async (req, res) => {
   // or for the round having advanced once both answers are in.
   const io = getIo();
   if (io && req.user.partnerId) {
-    io.to(`user:${req.user.partnerId}`).emit('game:updated', { gameId: game._id, game });
+    io.to(`user:${req.user.partnerId}`).emit('game:updated', { gameId: game._id, game, allQuestions: questions });
   }
 
-  res.json({ success: true, message: 'Answer submitted', data: { game, youAreUser1: isUser1 } });
+  res.json({ success: true, message: 'Answer submitted', data: { game, youAreUser1: isUser1, allQuestions: questions } });
 };
 
 // Used by solo local-mechanic games (memory_challenge) which don't go through
@@ -196,7 +209,8 @@ exports.getGameResult = async (req, res) => {
   if (!game) return res.status(404).json({ success: false, message: 'Game not found' });
   const rel = await require('../models/Relationship').findById(game.relationshipId);
   const youAreUser1 = rel.user1.toString() === req.user._id.toString();
-  res.json({ success: true, data: { game, youAreUser1 } });
+  const allQuestions = await resolveQuestionBank(game.relationshipId, game.gameType);
+  res.json({ success: true, data: { game, youAreUser1, allQuestions } });
 };
 
 // ─── Spin wheel (legacy single-result endpoint) ────────────────────────────────
@@ -257,6 +271,73 @@ exports.resetWheelActivities = async (req, res) => {
   try {
     await WheelConfig.findOneAndDelete({ relationshipId: req.user.relationshipId });
     res.json({ success: true, message: 'Reset to defaults', data: { activities: DEFAULT_WHEEL_ACTIVITIES, isCustom: false } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to reset' });
+  }
+};
+
+// ─── Custom prompts CRUD (truth_dare / who_knows_better / this_or_that / love_quiz) ─
+
+exports.getGamePrompts = async (req, res) => {
+  if (!requireRelationship(req, res)) return;
+  const { gameType } = req.params;
+  if (!CUSTOM_PROMPT_GAME_TYPES.includes(gameType)) {
+    return res.status(400).json({ success: false, message: 'Invalid game type' });
+  }
+  try {
+    const custom = await CustomGamePrompts.findOne({ relationshipId: req.user.relationshipId, gameType });
+    const isCustom = !!(custom?.prompts?.length);
+    const prompts = isCustom ? custom.prompts : GAME_QUESTIONS[gameType];
+    res.json({ success: true, data: { prompts, isCustom } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to fetch prompts' });
+  }
+};
+
+exports.saveGamePrompts = async (req, res) => {
+  if (!requireRelationship(req, res)) return;
+  const { gameType } = req.params;
+  if (!CUSTOM_PROMPT_GAME_TYPES.includes(gameType)) {
+    return res.status(400).json({ success: false, message: 'Invalid game type' });
+  }
+  const { prompts } = req.body;
+  if (!Array.isArray(prompts)) {
+    return res.status(400).json({ success: false, message: 'Prompts must be an array' });
+  }
+
+  const cleaned = prompts
+    .map(p => ({
+      question: String(p?.question ?? '').trim().slice(0, 200),
+      optionA: String(p?.optionA ?? '').trim().slice(0, 40),
+      optionB: String(p?.optionB ?? '').trim().slice(0, 40),
+    }))
+    .filter(p => p.question && (gameType !== 'this_or_that' || (p.optionA && p.optionB)));
+
+  if (cleaned.length < 2 || cleaned.length > 20) {
+    return res.status(400).json({ success: false, message: 'Must have 2–20 prompts' });
+  }
+
+  try {
+    const config = await CustomGamePrompts.findOneAndUpdate(
+      { relationshipId: req.user.relationshipId, gameType },
+      { prompts: cleaned },
+      { upsert: true, returnDocument: 'after' },
+    );
+    res.json({ success: true, message: 'Prompts saved!', data: { prompts: config.prompts, isCustom: true } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Failed to save prompts' });
+  }
+};
+
+exports.resetGamePrompts = async (req, res) => {
+  if (!requireRelationship(req, res)) return;
+  const { gameType } = req.params;
+  if (!CUSTOM_PROMPT_GAME_TYPES.includes(gameType)) {
+    return res.status(400).json({ success: false, message: 'Invalid game type' });
+  }
+  try {
+    await CustomGamePrompts.findOneAndDelete({ relationshipId: req.user.relationshipId, gameType });
+    res.json({ success: true, message: 'Reset to defaults', data: { prompts: GAME_QUESTIONS[gameType], isCustom: false } });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Failed to reset' });
   }
