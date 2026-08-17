@@ -1,6 +1,7 @@
 const CustomQuestion = require('../models/CustomQuestion');
 const User = require('../models/User');
 const Presence = require('../models/Presence');
+const Notification = require('../models/Notification');
 const sendPushNotification = require('../utils/sendPushNotification');
 const { getIo } = require('../config/socketInstance');
 
@@ -12,7 +13,7 @@ const requireRelationship = (req, res) => {
   return true;
 };
 
-const notifyPartner = async (partnerId, senderName, event, payload, pushTitle, pushBody) => {
+const notifyPartner = async (partnerId, relationshipId, senderName, event, payload, pushTitle, pushBody) => {
   const io = getIo();
   if (io && partnerId) {
     io.to(`user:${partnerId}`).emit(event, payload);
@@ -21,14 +22,13 @@ const notifyPartner = async (partnerId, senderName, event, payload, pushTitle, p
   try {
     const presence = await Presence.findOne({ userId: partnerId });
     if (presence?.isOnline) return;
+    const pushData = { type: 'custom_question', id: String(payload.id) };
+    await Notification.create({
+      userId: partnerId, relationshipId, type: 'custom_question', title: pushTitle, body: pushBody, data: pushData,
+    }).catch(() => {});
     const partner = await User.findById(partnerId).select('fcmToken');
     if (partner?.fcmToken) {
-      await sendPushNotification({
-        fcmToken: partner.fcmToken,
-        title: pushTitle,
-        body: pushBody,
-        data: { type: 'custom_question', id: String(payload.id) },
-      });
+      await sendPushNotification({ fcmToken: partner.fcmToken, title: pushTitle, body: pushBody, data: pushData });
     }
   } catch (err) {
     console.error('[CustomQuestion] Push failed:', err.message);
@@ -60,6 +60,7 @@ exports.askQuestion = async (req, res) => {
   const askerName = req.user.nickname || req.user.name || 'Partner';
   await notifyPartner(
     req.user.partnerId,
+    req.user.relationshipId,
     askerName,
     'customQuestion:asked',
     { id: item._id, question: item.question, questionPhoto: item.questionPhoto, askerName },
@@ -93,6 +94,7 @@ exports.editQuestion = async (req, res) => {
   const askerName = req.user.nickname || req.user.name || 'Partner';
   await notifyPartner(
     req.user.partnerId,
+    req.user.relationshipId,
     askerName,
     'customQuestion:edited',
     { id: item._id, question: item.question, questionPhoto: item.questionPhoto, askerName },
@@ -128,6 +130,7 @@ exports.answerQuestion = async (req, res) => {
   const answererName = req.user.nickname || req.user.name || 'Partner';
   await notifyPartner(
     req.user.partnerId,
+    req.user.relationshipId,
     answererName,
     'customQuestion:answered',
     { id: item._id, answer: item.answer, answerPhoto: item.answerPhoto, answererName },

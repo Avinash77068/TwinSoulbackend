@@ -1,8 +1,14 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Presence = require('../models/Presence');
+const Notification = require('../models/Notification');
 const sendPushNotification = require('../utils/sendPushNotification');
 const callHandlers = require('./call.socket');
+
+// Persist an in-app notification-inbox row alongside every push send below —
+// keeps the notifications list in sync with whatever actually reached the partner.
+const recordNotification = (userId, relationshipId, type, title, body, data) =>
+  Notification.create({ userId, relationshipId, type, title, body, data }).catch(() => {});
 
 // Guard: verify client-supplied relationshipId matches the authenticated user's
 const ownsRelationship = (user, relationshipId) =>
@@ -114,12 +120,18 @@ module.exports = (io) => {
             : relayed.type === 'photo' ? '📷 Photo'
             : relayed.type === 'voice' ? '🎤 Voice message'
             : '💬 New message';
-          await sendPushNotification({
-            fcmToken: partner.fcmToken,
-            title: user.nickname || user.name || 'Partner',
-            body: preview,
-            data: { type: 'message', relationshipId: String(data.relationshipId), senderId: String(userId) },
-          });
+          const senderName = user.nickname || user.name || 'Partner';
+          await Promise.all([
+            sendPushNotification({
+              fcmToken: partner.fcmToken,
+              title: senderName,
+              body: preview,
+              data: { type: 'message', relationshipId: String(data.relationshipId), senderId: String(userId) },
+            }),
+            recordNotification(user.partnerId, data.relationshipId, 'message', senderName, preview, {
+              type: 'message', relationshipId: String(data.relationshipId), senderId: String(userId),
+            }),
+          ]);
         } catch (err) {
           console.error('[Socket] FCM send failed:', err.message);
         }
@@ -196,14 +208,13 @@ module.exports = (io) => {
         id: data?.id, title: data?.title ?? '', isPlaying: data?.isPlaying ?? true,
       });
       try {
+        const title = `🎬 ${senderName}`;
+        const body = data?.title ? `"${data.title}" laga diya — dekho saath!` : 'Watch Together pe video laga diya!';
+        const pushData = { type: 'watchTogether', relationshipId: String(user.relationshipId) };
+        recordNotification(user.partnerId, user.relationshipId, 'watchTogether', title, body, { ...pushData, action: 'setVideo' });
         const partner = await User.findById(user.partnerId).select('fcmToken');
         if (partner?.fcmToken) {
-          await sendPushNotification({
-            fcmToken: partner.fcmToken,
-            title: `🎬 ${senderName}`,
-            body: data?.title ? `"${data.title}" laga diya — dekho saath!` : 'Watch Together pe video laga diya!',
-            data: { type: 'watchTogether', relationshipId: String(user.relationshipId) },
-          });
+          await sendPushNotification({ fcmToken: partner.fcmToken, title, body, data: pushData });
         }
       } catch (err) {
         console.error('[Socket] watchTogether:setVideo FCM failed:', err.message);
@@ -219,14 +230,13 @@ module.exports = (io) => {
         videoId: data?.videoId,
       });
       try {
+        const title = `▶️ ${senderName}`;
+        const body = data?.title ? `"${data.title}" play kiya — join karo!` : 'Watch Together pe play kiya!';
+        const pushData = { type: 'watchTogether', relationshipId: String(user.relationshipId) };
+        recordNotification(user.partnerId, user.relationshipId, 'watchTogether', title, body, { ...pushData, action: 'play' });
         const partner = await User.findById(user.partnerId).select('fcmToken');
         if (partner?.fcmToken) {
-          await sendPushNotification({
-            fcmToken: partner.fcmToken,
-            title: `▶️ ${senderName}`,
-            body: data?.title ? `"${data.title}" play kiya — join karo!` : 'Watch Together pe play kiya!',
-            data: { type: 'watchTogether', relationshipId: String(user.relationshipId) },
-          });
+          await sendPushNotification({ fcmToken: partner.fcmToken, title, body, data: pushData });
         }
       } catch (err) {
         console.error('[Socket] watchTogether:play FCM failed:', err.message);
@@ -245,14 +255,13 @@ module.exports = (io) => {
         currentTime: data?.currentTime,
       });
       try {
+        const title = `⏸️ ${senderName}`;
+        const body = data?.title ? `"${data.title}" pause kar diya` : 'Watch Together pe video pause kar diya';
+        const pushData = { type: 'watchTogether', relationshipId: String(user.relationshipId) };
+        recordNotification(user.partnerId, user.relationshipId, 'watchTogether', title, body, { ...pushData, action: 'pause' });
         const partner = await User.findById(user.partnerId).select('fcmToken');
         if (partner?.fcmToken) {
-          await sendPushNotification({
-            fcmToken: partner.fcmToken,
-            title: `⏸️ ${senderName}`,
-            body: data?.title ? `"${data.title}" pause kar diya` : 'Watch Together pe video pause kar diya',
-            data: { type: 'watchTogether', relationshipId: String(user.relationshipId) },
-          });
+          await sendPushNotification({ fcmToken: partner.fcmToken, title, body, data: pushData });
         }
       } catch (err) {
         console.error('[Socket] watchTogether:pause FCM failed:', err.message);
@@ -285,14 +294,13 @@ module.exports = (io) => {
         name: senderName, joinedAt,
       });
       try {
+        const title = `🎬 ${senderName}`;
+        const body = 'Watch Together pe aao! Abhi join karo';
+        const pushData = { type: 'watchTogether', relationshipId: String(user.relationshipId) };
+        recordNotification(user.partnerId, user.relationshipId, 'watchTogether', title, body, { ...pushData, action: 'join' });
         const partner = await User.findById(user.partnerId).select('fcmToken');
         if (partner?.fcmToken) {
-          await sendPushNotification({
-            fcmToken: partner.fcmToken,
-            title: `🎬 ${senderName}`,
-            body: 'Watch Together pe aao! Abhi join karo',
-            data: { type: 'watchTogether', relationshipId: String(user.relationshipId) },
-          });
+          await sendPushNotification({ fcmToken: partner.fcmToken, title, body, data: pushData });
         }
       } catch (err) {
         console.error('[Socket] watchTogether:join FCM failed:', err.message);
@@ -307,14 +315,13 @@ module.exports = (io) => {
       });
       if (!user?.partnerId) return;
       try {
+        const title = `👋 ${senderName}`;
+        const body = 'Watch Together session chhod diya';
+        const pushData = { type: 'watchTogether_leave', relationshipId: String(user.relationshipId) };
+        recordNotification(user.partnerId, user.relationshipId, 'watchTogether', title, body, { ...pushData, action: 'leave' });
         const partner = await User.findById(user.partnerId).select('fcmToken');
         if (partner?.fcmToken) {
-          await sendPushNotification({
-            fcmToken: partner.fcmToken,
-            title: `👋 ${senderName}`,
-            body: 'Watch Together session chhod diya',
-            data: { type: 'watchTogether_leave', relationshipId: String(user.relationshipId) },
-          });
+          await sendPushNotification({ fcmToken: partner.fcmToken, title, body, data: pushData });
         }
       } catch (err) {
         console.error('[Socket] watchTogether:leave FCM failed:', err.message);
@@ -330,16 +337,15 @@ module.exports = (io) => {
         try {
           const partnerPresence = await Presence.findOne({ userId: user.partnerId });
           if (!partnerPresence?.isOnline) {
+            const senderName = user.nickname || user.name || 'Partner';
+            const trackName = data.track?.title || data.currentTrack?.title || 'a song';
+            const title = `🎵 ${senderName}`;
+            const body = `is listening to ${trackName}`;
+            const pushData = { type: 'music', relationshipId: String(data.relationshipId) };
+            recordNotification(user.partnerId, data.relationshipId, 'music', title, body, pushData);
             const partner = await User.findById(user.partnerId).select('fcmToken');
             if (partner?.fcmToken) {
-              const senderName = user.nickname || user.name || 'Partner';
-              const trackName = data.track?.title || data.currentTrack?.title || 'a song';
-              await sendPushNotification({
-                fcmToken: partner.fcmToken,
-                title: `🎵 ${senderName}`,
-                body: `is listening to ${trackName}`,
-                data: { type: 'music', relationshipId: String(data.relationshipId) },
-              });
+              await sendPushNotification({ fcmToken: partner.fcmToken, title, body, data: pushData });
             }
           }
         } catch (_) {}

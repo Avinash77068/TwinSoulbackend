@@ -2,6 +2,7 @@ const MiniGame            = require('../models/MiniGame');
 const WheelConfig         = require('../models/WheelConfig');
 const Presence            = require('../models/Presence');
 const User                = require('../models/User');
+const Notification        = require('../models/Notification');
 const sendPushNotification = require('../utils/sendPushNotification');
 const { getIo }           = require('../config/socketInstance');
 
@@ -287,19 +288,21 @@ exports.spinWheelActivity = async (req, res) => {
       io.to(`user:${partnerId}`).emit('game:wheel_spin', payload);
     }
 
-    // ── FCM push if partner is offline ────────────────────────────────────────
+    // ── FCM push + inbox record if partner is offline ─────────────────────────
     if (partnerId) {
       try {
         const presence = await Presence.findOne({ userId: partnerId });
         if (!presence?.isOnline) {
+          const title = `🎡 ${spinnerName}`;
+          const body  = `Wheel spun — "${result}" aaya!`;
+          const pushData = { type: 'wheel_spin', relationshipId: String(req.user.relationshipId) };
+          Notification.create({
+            userId: partnerId, relationshipId: req.user.relationshipId,
+            type: 'wheel_spin', title, body, data: pushData,
+          }).catch(() => {});
           const partner = await User.findById(partnerId).select('fcmToken');
           if (partner?.fcmToken) {
-            await sendPushNotification({
-              fcmToken: partner.fcmToken,
-              title:    `🎡 ${spinnerName}`,
-              body:     `Wheel spun — "${result}" aaya!`,
-              data:     { type: 'wheel_spin', relationshipId: String(req.user.relationshipId) },
-            });
+            await sendPushNotification({ fcmToken: partner.fcmToken, title, body, data: pushData });
           }
         }
       } catch (err) {

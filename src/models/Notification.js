@@ -8,7 +8,7 @@ const notificationSchema = new mongoose.Schema({
     enum: ['message', 'mood', 'photo', 'diary', 'scheduled', 'capsule', 'milestone',
       'anniversary', 'goodbye', 'music', 'game', 'midnight', 'ai', 'connection',
       'relationship', 'connection_approved', 'relationship_ended', 'discover_invite',
-      'archive_expiring', 'custom_question', 'wheel_spin',
+      'archive_expiring', 'custom_question', 'wheel_spin', 'watchTogether',
       'missed_call', 'no_answer'],
     required: true,
   },

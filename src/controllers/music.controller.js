@@ -6,6 +6,7 @@ const { getIo } = require('../config/socketInstance');
 const sendPushNotification = require('../utils/sendPushNotification');
 const User = require('../models/User');
 const Presence = require('../models/Presence');
+const Notification = require('../models/Notification');
 const axios = require('axios');
 
 const requireRelationship = (req, res) => {
@@ -107,16 +108,18 @@ exports.updatePlayback = async (req, res) => {
       if (sender?.partnerId) {
         const partnerPresence = await Presence.findOne({ userId: sender.partnerId });
         if (!partnerPresence?.isOnline) {
+          const senderName = sender.nickname || sender.name || 'Partner';
+          const trackName = session.currentTrack?.title || 'a song';
+          const title = `🎵 ${senderName}`;
+          const body = `is listening to ${trackName}`;
+          const pushData = { type: 'music', relationshipId: String(req.user.relationshipId) };
+          Notification.create({
+            userId: sender.partnerId, relationshipId: req.user.relationshipId,
+            type: 'music', title, body, data: pushData,
+          }).catch(() => {});
           const partner = await User.findById(sender.partnerId).select('fcmToken');
           if (partner?.fcmToken) {
-            const senderName = sender.nickname || sender.name || 'Partner';
-            const trackName = session.currentTrack?.title || 'a song';
-            await sendPushNotification({
-              fcmToken: partner.fcmToken,
-              title: `🎵 ${senderName}`,
-              body: `is listening to ${trackName}`,
-              data: { type: 'music', relationshipId: String(req.user.relationshipId) },
-            });
+            await sendPushNotification({ fcmToken: partner.fcmToken, title, body, data: pushData });
           }
         }
       }
