@@ -106,13 +106,15 @@ module.exports = (io) => {
       reply({ success: true, clientMessageId, deliveredAt: new Date().toISOString() });
       socket.to(`relationship:${data.relationshipId}`).emit('message:new', relayed);
 
-      // Push only when the partner is not connected. Unchanged in intent, but
-      // now fire-and-forget so a slow FCM round trip cannot delay the relay.
+      // Push always, never gated on presence. A killed app can stay marked
+      // online for as long as socket.io takes to notice the dead connection
+      // (up to its ping timeout), and every push skipped inside that window was
+      // a notification the partner never got. The app itself is the right place
+      // to decide — it suppresses the notification only when the chat is
+      // actually on screen (see the foreground handler in App.tsx).
       (async () => {
         try {
           if (!user?.partnerId) return;
-          const partnerPresence = await Presence.findOne({ userId: user.partnerId });
-          if (partnerPresence?.isOnline) return;
           const partner = await User.findById(user.partnerId).select('fcmToken');
           if (!partner?.fcmToken) return;
           const preview =

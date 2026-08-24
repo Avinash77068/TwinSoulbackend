@@ -1,5 +1,4 @@
 const User = require('../models/User');
-const Presence = require('../models/Presence');
 const CallLog = require('../models/CallLog');
 const Notification = require('../models/Notification');
 const sendPushNotification = require('../utils/sendPushNotification');
@@ -166,25 +165,22 @@ module.exports = (io, socket) => {
       ringTimeouts.set(callId, timeout);
       
       try {
-        const calleePresence = await Presence.findOne({ userId: calleeId });
-        if (!calleePresence?.isOnline) {
-          const callee = await User.findById(calleeId).select('fcmToken');
-          if (callee?.fcmToken) {
-            await sendPushNotification({
-              fcmToken: callee.fcmToken,
-              title: `📞 ${callerName} is calling`,
-              body: `${type === 'video' ? '🎥 Video' : '🎤 Audio'} call — tap to answer`,
-              data: {
-                type:           'incoming_call',
-                callId,
-                callType:       type,
-                callerId:       userId,
-                callerName,
-                callerPhoto:    caller.profilePhoto ?? '',
-                relationshipId: String(caller.relationshipId),
-              },
-            });
-          }
+        const callee = await User.findById(calleeId).select('fcmToken');
+        if (callee?.fcmToken) {
+          await sendPushNotification({
+            fcmToken: callee.fcmToken,
+            title: `📞 ${callerName} is calling`,
+            body: `${type === 'video' ? '🎥 Video' : '🎤 Audio'} call — tap to answer`,
+            data: {
+              type:           'incoming_call',
+              callId,
+              callType:       type,
+              callerId:       userId,
+              callerName,
+              callerPhoto:    caller.profilePhoto ?? '',
+              relationshipId: String(caller.relationshipId),
+            },
+          });
         }
       } catch (_) {}
     } catch (err) {
@@ -273,6 +269,13 @@ module.exports = (io, socket) => {
     if (!call) return;
     const targetId = call.callerId === userId ? call.calleeId : call.callerId;
     io.to(`user:${targetId}`).emit('webrtc:ice-candidate', { callId, candidate });
+  });
+
+  socket.on('call:media-state', ({ callId, cameraOn }) => {
+    const call = callService.getActiveCall(callId);
+    if (!call) return;
+    const targetId = call.callerId === userId ? call.calleeId : call.callerId;
+    io.to(`user:${targetId}`).emit('call:media-state', { callId, cameraOn: !!cameraOn });
   });
 
   // FIX: relay ICE restart offer to callee
