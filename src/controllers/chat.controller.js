@@ -39,23 +39,38 @@ exports.updateBubbleColor = async (req, res) => {
 
 exports.getMessages = async (req, res) => {
   if (!requireRelationship(req, res)) return;
-  const { page = 1, limit = 50, before } = req.query;
-  console.log(`[Chat] getMessages | user: ${req.user._id} | page: ${page} | limit: ${limit} | before: ${before || 'N/A'}`);
+  const { page = 1, limit = 50, before, windowDays = 4 } = req.query;
+  console.log(`[Chat] getMessages | user: ${req.user._id} | page: ${page} | limit: ${limit} | before: ${before || 'N/A'} | windowDays: ${before ? 'N/A' : windowDays}`);
 
-  const query = { relationshipId: req.user.relationshipId, isDeleted: false };
-  if (before) query.createdAt = { $lt: new Date(before) };
+  const baseQuery = { relationshipId: req.user.relationshipId, isDeleted: false };
+  const query = { ...baseQuery };
+  if (before) {
+    // Paging further back through history — the age window below only applies
+    // to the initial, most-recent load.
+    query.createdAt = { $lt: new Date(before) };
+  } else if (Number(windowDays) > 0) {
+    query.createdAt = { $gte: new Date(Date.now() - Number(windowDays) * 24 * 60 * 60 * 1000) };
+  }
 
   // Sorted by the SENDER's clock, falling back to server time for messages
   // predating clientSentAt. A batch flushed late would otherwise be appended to
   // the end of the thread instead of slotting back where it was typed.
-  const messages = await Message.find(query)
+  const fetchPage = q => Message.find(q)
     .populate('senderId', 'name nickname profilePhoto bubbleColor')
     .populate('replyTo')
     .sort({ clientSentAt: -1, createdAt: -1 })
     .skip((page - 1) * limit)
     .limit(Number(limit));
 
-  const total = await Message.countDocuments(query);
+  let messages = await fetchPage(query);
+
+  // A thread the couple hasn't touched in over `windowDays` must not look
+  // empty on open — fall back to the most recent messages regardless of age.
+  if (!before && messages.length === 0 && Number(page) === 1) {
+    messages = await fetchPage(baseQuery);
+  }
+
+  const total = await Message.countDocuments(baseQuery);
   console.log(`[Chat] getMessages result | fetched: ${messages.length} | total: ${total}`);
   res.json({ success: true, data: { messages: messages.reverse(), total, page: Number(page) } });
 };
