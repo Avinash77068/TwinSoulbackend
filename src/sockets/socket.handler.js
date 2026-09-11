@@ -10,6 +10,8 @@ const callHandlers = require('./call.socket');
 const recordNotification = (userId, relationshipId, type, title, body, data) =>
   Notification.create({ userId, relationshipId, type, title, body, data }).catch(() => {});
 
+const watchTogetherState = new Map();
+
 // Guard: verify client-supplied relationshipId matches the authenticated user's
 const ownsRelationship = (user, relationshipId) =>
   user?.relationshipId && String(user.relationshipId) === String(relationshipId);
@@ -205,8 +207,14 @@ module.exports = (io) => {
 
     socket.on('watchTogether:setVideo', async (data) => {
       if (!user?.relationshipId || !user?.partnerId) return;
+      const relationshipKey = String(user.relationshipId);
+      watchTogetherState.set(relationshipKey, {
+        id: data?.id,
+        isPlaying: data?.isPlaying ?? true,
+        currentTime: 0,
+      });
       const senderName = user.nickname || user.name || 'Partner';
-      socket.to(`relationship:${user.relationshipId}`).emit('watchTogether:setVideo', {
+      socket.to(`relationship:${relationshipKey}`).emit('watchTogether:setVideo', {
         id: data?.id, title: data?.title ?? '', isPlaying: data?.isPlaying ?? true,
       });
       try {
@@ -225,6 +233,13 @@ module.exports = (io) => {
 
     socket.on('watchTogether:play', async (data) => {
       if (!user?.relationshipId || !user?.partnerId) return;
+      const relationshipKey = String(user.relationshipId);
+      const current = watchTogetherState.get(relationshipKey);
+      watchTogetherState.set(relationshipKey, {
+        id: data?.videoId || current?.id || '',
+        isPlaying: true,
+        currentTime: data?.currentTime ?? current?.currentTime ?? 0,
+      });
       const senderName = user.nickname || user.name || 'Partner';
       socket.to(`relationship:${user.relationshipId}`).emit('watchTogether:play', {
         title: data?.title ?? '',
@@ -247,6 +262,13 @@ module.exports = (io) => {
 
     socket.on('watchTogether:pause', async (data) => {
       if (!user?.relationshipId || !user?.partnerId) return;
+      const relationshipKey = String(user.relationshipId);
+      const current = watchTogetherState.get(relationshipKey);
+      watchTogetherState.set(relationshipKey, {
+        id: current?.id || data?.videoId || '',
+        isPlaying: false,
+        currentTime: data?.currentTime ?? current?.currentTime ?? 0,
+      });
       const senderName = user.nickname || user.name || 'Partner';
       // Include server timestamp so frontend can show "X sec pehle"
       const pausedAt = Date.now();
@@ -290,6 +312,8 @@ module.exports = (io) => {
 
     socket.on('watchTogether:join', async () => {
       if (!user?.relationshipId || !user?.partnerId) return;
+      const current = watchTogetherState.get(String(user.relationshipId));
+      if (current?.id) socket.emit('watchTogether:state', current);
       const senderName = user.nickname || user.name || 'Partner';
       const joinedAt = Date.now();
       socket.to(`relationship:${user.relationshipId}`).emit('watchTogether:join', {
@@ -311,6 +335,7 @@ module.exports = (io) => {
 
     socket.on('watchTogether:leave', async () => {
       if (!user?.relationshipId) return;
+      watchTogetherState.delete(String(user.relationshipId));
       const senderName = user.nickname || user.name || 'Partner';
       socket.to(`relationship:${user.relationshipId}`).emit('watchTogether:leave', {
         name: senderName, leftAt: Date.now(),
